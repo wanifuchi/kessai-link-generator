@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     const { service, credentials } = validatedData;
 
     // サービス別の認証情報検証
-    const validationResult = await validateServiceCredentials(service, credentials);
+    const validationResult = await validateServiceCredentials(service, credentials as PaymentCredentials);
 
     return NextResponse.json({
       success: true,
