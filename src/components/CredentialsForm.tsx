@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert as AlertUI, AlertDescription } from '@/components/ui/alert';
 import { useSelectedService, usePaymentActions } from '@/store/payment-store';
 import { maskApiKey } from '@/lib/utils';
 import { Eye, EyeOff, Shield, AlertCircle, CheckCircle, ExternalLink } from 'lucide-react';
@@ -419,7 +419,7 @@ export default function CredentialsForm() {
 
         {/* Validation Result */}
         {validationResult && (
-          <Alert className={validationResult.isValid ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}>
+          <AlertUI className={validationResult.isValid ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}>
             <div className="flex">
               {validationResult.isValid ? (
                 <CheckCircle className="h-4 w-4 text-green-600" />
@@ -430,7 +430,7 @@ export default function CredentialsForm() {
                 {validationResult.message}
               </AlertDescription>
             </div>
-          </Alert>
+          </AlertUI>
         )}
 
         {/* Submit Button */}
@@ -471,21 +471,3 @@ export default function CredentialsForm() {
   );
 }
 
-// Alert コンポーネントが不足している場合の簡易実装
-const Alert = ({ children, className = '', ...props }: {
-  children: React.ReactNode;
-  className?: string;
-}) => (
-  <div className={`rounded-lg border p-4 ${className}`} {...props}>
-    {children}
-  </div>
-);
-
-const AlertDescription = ({ children, className = '', ...props }: {
-  children: React.ReactNode;
-  className?: string;
-}) => (
-  <div className={`text-sm ${className}`} {...props}>
-    {children}
-  </div>
-);
