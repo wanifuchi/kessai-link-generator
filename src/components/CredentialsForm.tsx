@@ -286,8 +286,8 @@ export default function CredentialsForm() {
               )}
             </SelectContent>
           </Select>
-          {errors.environment && (
-            <p className="text-sm text-red-600">{errors.environment.message}</p>
+          {(errors as any).environment && (
+            <p className="text-sm text-red-600">{(errors as any).environment.message}</p>
           )}
         </div>
 
@@ -300,10 +300,10 @@ export default function CredentialsForm() {
                 id="publishableKey"
                 {...register('publishableKey' as any)}
                 placeholder="pk_test_..."
-                className={errors.publishableKey ? 'border-red-500' : ''}
+                className={(errors as any).publishableKey ? 'border-red-500' : ''}
               />
-              {errors.publishableKey && (
-                <p className="text-sm text-red-600">{errors.publishableKey.message}</p>
+              {(errors as any).publishableKey && (
+                <p className="text-sm text-red-600">{(errors as any).publishableKey.message}</p>
               )}
             </div>
 
@@ -315,7 +315,7 @@ export default function CredentialsForm() {
                   type={showSecrets.secretKey ? 'text' : 'password'}
                   {...register('secretKey' as any)}
                   placeholder="sk_test_..."
-                  className={`pr-10 ${errors.secretKey ? 'border-red-500' : ''}`}
+                  className={`pr-10 ${(errors as any).secretKey ? 'border-red-500' : ''}`}
                 />
                 <button
                   type="button"
@@ -329,8 +329,8 @@ export default function CredentialsForm() {
                   )}
                 </button>
               </div>
-              {errors.secretKey && (
-                <p className="text-sm text-red-600">{errors.secretKey.message}</p>
+              {(errors as any).secretKey && (
+                <p className="text-sm text-red-600">{(errors as any).secretKey.message}</p>
               )}
             </div>
 
@@ -367,10 +367,10 @@ export default function CredentialsForm() {
                 id="clientId"
                 {...register('clientId' as any)}
                 placeholder="Client ID"
-                className={errors.clientId ? 'border-red-500' : ''}
+                className={(errors as any).clientId ? 'border-red-500' : ''}
               />
-              {errors.clientId && (
-                <p className="text-sm text-red-600">{errors.clientId.message}</p>
+              {(errors as any).clientId && (
+                <p className="text-sm text-red-600">{(errors as any).clientId.message}</p>
               )}
             </div>
 
@@ -382,7 +382,7 @@ export default function CredentialsForm() {
                   type={showSecrets.clientSecret ? 'text' : 'password'}
                   {...register('clientSecret' as any)}
                   placeholder="Client Secret"
-                  className={`pr-10 ${errors.clientSecret ? 'border-red-500' : ''}`}
+                  className={`pr-10 ${(errors as any).clientSecret ? 'border-red-500' : ''}`}
                 />
                 <button
                   type="button"
@@ -396,8 +396,8 @@ export default function CredentialsForm() {
                   )}
                 </button>
               </div>
-              {errors.clientSecret && (
-                <p className="text-sm text-red-600">{errors.clientSecret.message}</p>
+              {(errors as any).clientSecret && (
+                <p className="text-sm text-red-600">{(errors as any).clientSecret.message}</p>
               )}
             </div>
           </>
@@ -411,10 +411,10 @@ export default function CredentialsForm() {
                 id="applicationId"
                 {...register('applicationId' as any)}
                 placeholder="Application ID"
-                className={errors.applicationId ? 'border-red-500' : ''}
+                className={(errors as any).applicationId ? 'border-red-500' : ''}
               />
-              {errors.applicationId && (
-                <p className="text-sm text-red-600">{errors.applicationId.message}</p>
+              {(errors as any).applicationId && (
+                <p className="text-sm text-red-600">{(errors as any).applicationId.message}</p>
               )}
             </div>
 
@@ -426,7 +426,7 @@ export default function CredentialsForm() {
                   type={showSecrets.accessToken ? 'text' : 'password'}
                   {...register('accessToken' as any)}
                   placeholder="Access Token"
-                  className={`pr-10 ${errors.accessToken ? 'border-red-500' : ''}`}
+                  className={`pr-10 ${(errors as any).accessToken ? 'border-red-500' : ''}`}
                 />
                 <button
                   type="button"
@@ -440,8 +440,8 @@ export default function CredentialsForm() {
                   )}
                 </button>
               </div>
-              {errors.accessToken && (
-                <p className="text-sm text-red-600">{errors.accessToken.message}</p>
+              {(errors as any).accessToken && (
+                <p className="text-sm text-red-600">{(errors as any).accessToken.message}</p>
               )}
             </div>
           </>
