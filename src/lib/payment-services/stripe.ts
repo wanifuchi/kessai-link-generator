@@ -117,7 +117,8 @@ export class StripePaymentService extends BasePaymentService {
       // オプション項目の追加
       if (paymentData.customerEmail) {
         paymentLinkData.customer_creation = 'always';
-        paymentLinkData.collect_shipping_address = false;
+        // collect_shipping_address プロパティは現在のStripe APIでは利用不可
+        // paymentLinkData.collect_shipping_address = false;
       }
 
       if (paymentData.successUrl) {
