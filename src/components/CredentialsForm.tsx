@@ -150,6 +150,9 @@ export default function CredentialsForm() {
       stripe: 'https://stripe.com/docs/keys',
       paypal: 'https://developer.paypal.com/api/rest/',
       square: 'https://developer.squareup.com/docs/build-basics/access-tokens',
+      paypay: 'https://developer.paypay.ne.jp/',
+      linepay: 'https://pay.line.me/developers/apis/onlineApis',
+      fincode: 'https://docs.fincode.jp/api',
     };
     return links[selectedService] || '#';
   };
@@ -181,6 +184,33 @@ export default function CredentialsForm() {
           'アプリケーションを作成または選択',
           'Sandbox または本番環境の認証情報を取得',
           'Application ID と Access Token をコピー'
+        ]
+      },
+      paypay: {
+        title: 'PayPay API認証情報の取得方法',
+        steps: [
+          'PayPay for Developers にアクセス',
+          '法人アカウントで審査申請',
+          '承認後、API認証情報を取得',
+          'Merchant ID、API Key、API Secret をコピー'
+        ]
+      },
+      linepay: {
+        title: 'LINE Pay API認証情報の取得方法', 
+        steps: [
+          'LINE Pay Developers にアクセス',
+          'LINE Business アカウントで申請',
+          '審査完了後、Channel ID と Channel Secret を取得',
+          'ベータ環境または本番環境を選択'
+        ]
+      },
+      fincode: {
+        title: 'fincode API認証情報の取得方法',
+        steps: [
+          'GMO fincode にアクセス',
+          'アカウント作成・審査申請',
+          'テスト環境または本番環境を選択',
+          'Shop ID と API Key をコピー'
         ]
       },
     };
