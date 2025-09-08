@@ -4,7 +4,7 @@
 
 ## 🚀 機能
 
-- **多決済サービス対応**: Stripe, PayPal, Square, PayPay, LINE Pay, fincode
+- **多決済サービス対応**: Stripe, PayPal, Square, PayPay, fincode
 - **セキュア**: AES-256暗号化によるAPI認証情報の安全な処理
 - **QRコード生成**: 決済リンクの自動QRコード生成
 - **レスポンシブUI**: モバイル・デスクトップ対応
@@ -15,7 +15,7 @@
 ### ✅ 完了機能
 - [x] Next.js 14 + TypeScript + Tailwind CSS + shadcn/ui セットアップ
 - [x] レスポンシブなメインレイアウト構築
-- [x] 決済サービス選択コンポーネント（6サービス対応）
+- [x] 決済サービス選択コンポーネント（5サービス対応）
 - [x] セキュアなAPI認証情報入力フォーム
 - [x] 決済情報入力フォーム（金額・商品情報）
 - [x] Stripe SDK統合とPayment Link生成API
@@ -94,12 +94,11 @@ NEXTAUTH_SECRET="your-nextauth-secret"
 ## 🎯 使用方法
 
 ### 1. 決済サービスの選択
-6つの決済サービスから選択：
+5つの決済サービスから選択：
 - **Stripe**: グローバル対応、高機能
 - **PayPal**: 世界的認知度、購入者保護
 - **Square**: 小規模事業向け、シンプル
 - **PayPay**: 日本国内、QRコード決済
-- **LINE Pay**: LINEユーザー向け
 - **fincode by GMO**: 多様な決済方法
 
 ### 2. API認証情報の入力
@@ -155,7 +154,6 @@ GET /api/qr-code?url={url}&size={size}&margin={margin}
 ## 📈 Phase 3 計画 (3-4週間)
 
 - [ ] PayPay API統合
-- [ ] LINE Pay API統合
 - [ ] fincode by GMO API統合
 - [ ] 多言語対応 (i18n)
 - [ ] 高度な分析・レポート機能
@@ -182,8 +180,7 @@ vercel
 
 #### 審査・申請が必要
 4. **PayPay**: PayPay for Developers (法人審査)
-5. **LINE Pay**: LINE Pay Developers (審査期間1-2週間)
-6. **fincode**: GMO申請 (審査期間1週間)
+5. **fincode**: GMO申請 (審査期間1週間)
 
 ## 📊 パフォーマンス
 

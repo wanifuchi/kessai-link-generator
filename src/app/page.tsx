@@ -34,7 +34,7 @@ export default function HomePage() {
           <span className="text-gradient">ユニバーサル</span>決済リンクジェネレーター
         </h1>
         <p className="text-xl text-gray-600 mb-6">
-          Stripe、PayPal、Square、PayPay、LINE Pay、fincode - 
+          Stripe、PayPal、Square、PayPay、fincode - 
           複数の決済サービスに対応した決済リンクを簡単に生成
         </p>
         <div className="flex justify-center items-center space-x-4 text-sm text-gray-500">

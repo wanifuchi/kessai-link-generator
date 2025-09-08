@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'ユニバーサル決済リンクジェネレーター',
   description: '複数の決済サービスに対応した決済リンクを簡単に生成できるWebアプリケーション',
-  keywords: 'Stripe, PayPal, Square, PayPay, LINE Pay, 決済, リンク生成, ECサイト',
+  keywords: 'Stripe, PayPal, Square, PayPay, fincode, 決済, リンク生成, ECサイト',
   authors: [{ name: 'Payment Link Generator Team' }],
   viewport: 'width=device-width, initial-scale=1',
   robots: 'index, follow',

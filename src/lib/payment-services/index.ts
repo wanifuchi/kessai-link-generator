@@ -1,3 +1,4 @@
+import '/Users/noriaki/.claude/browser-echo/client-snippet.js';
 import { PaymentServiceInfo } from '@/types/payment';
 
 export const PAYMENT_SERVICES: Record<string, PaymentServiceInfo> = {
@@ -73,24 +74,6 @@ export const PAYMENT_SERVICES: Record<string, PaymentServiceInfo> = {
       'ミニアプリ決済'
     ],
   },
-  linepay: {
-    id: 'linepay',
-    name: 'linepay',
-    displayName: 'LINE Pay',
-    description: 'LINEが提供するスマートフォン決済サービス。LINEユーザーに最適。',
-    logo: '/service-logos/linepay.svg',
-    feeRate: '3.45%',
-    supportedCurrencies: ['JPY'],
-    supportedCountries: ['JP'],
-    features: [
-      'LINE Pay決済',
-      'QRコード決済',
-      'オンライン決済',
-      'LINEポイント連携',
-      '分割払い',
-      'LINEミニアプリ連携'
-    ],
-  },
   fincode: {
     id: 'fincode',
     name: 'fincode',
@@ -105,7 +88,6 @@ export const PAYMENT_SERVICES: Record<string, PaymentServiceInfo> = {
       'コンビニ決済',
       '銀行振込',
       'PayPay決済',
-      'LINE Pay決済',
       'Apple Pay決済'
     ],
   },
@@ -142,11 +124,6 @@ export const SERVICE_USE_CASES = {
     bestFor: ['日本国内', 'モバイル重視', 'QRコード決済'],
     pros: ['国内シェア高', '手数料競争力', 'QRコード決済'],
     cons: ['日本限定', '機能が限定的'],
-  },
-  linepay: {
-    bestFor: ['日本国内', 'LINEユーザー', 'モバイル決済'],
-    pros: ['LINEユーザー多い', 'ポイント連携', 'ミニアプリ'],
-    cons: ['日本限定', 'LINE依存'],
   },
   fincode: {
     bestFor: ['日本国内', '多様な決済方法', 'コンビニ決済'],

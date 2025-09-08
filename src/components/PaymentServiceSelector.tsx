@@ -37,7 +37,6 @@ export default function PaymentServiceSelector() {
       paypal: '💙',
       square: '⬜',
       paypay: '📱',
-      linepay: '🟢',
       fincode: '🏦',
     };
     return logoMap[serviceName] || '💳';

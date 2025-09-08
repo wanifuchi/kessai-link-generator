@@ -125,7 +125,6 @@ Phase 2-3 (計画中):
 - PayPal
 - Square
 - PayPay
-- LINE Pay
 - fincode by GMO
 
 ---

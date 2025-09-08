@@ -5,7 +5,7 @@ import { PaymentService, PaymentCredentials } from '@/types/payment';
 
 // リクエストバリデーション
 const validateRequestSchema = z.object({
-  service: z.enum(['stripe', 'paypal', 'square', 'paypay', 'linepay', 'fincode']),
+  service: z.enum(['stripe', 'paypal', 'square', 'paypay', 'fincode']),
   credentials: z.record(z.any()), // 各サービス固有の構造のため、詳細なバリデーションはサービスクラス内で実行
 });
 
@@ -105,8 +105,6 @@ async function validateServiceCredentials(
       case 'paypay':
         return await validatePayPayCredentials(credentials);
       
-      case 'linepay':
-        return await validateLinePayCredentials(credentials);
       
       case 'fincode':
         return await validateFincodeCredentials(credentials);
@@ -213,26 +211,6 @@ async function validatePayPayCredentials(credentials: PaymentCredentials) {
   };
 }
 
-async function validateLinePayCredentials(credentials: PaymentCredentials) {
-  // LINE Pay認証情報の検証実装
-  // 現在はモックとして基本的なフォーマットチェックのみ
-  const linepayCredentials = credentials as any;
-  
-  const isValid = !!(
-    linepayCredentials.channelId &&
-    linepayCredentials.channelSecret &&
-    linepayCredentials.environment &&
-    ['beta', 'real'].includes(linepayCredentials.environment)
-  );
-
-  return {
-    isValid,
-    service: 'linepay' as PaymentService,
-    environment: linepayCredentials.environment,
-    ...(isValid ? {} : { error: 'Invalid LINE Pay credentials format' })
-  };
-}
-
 async function validateFincodeCredentials(credentials: PaymentCredentials) {
   // fincode認証情報の検証実装
   // 現在はモックとして基本的なフォーマットチェックのみ
@@ -258,7 +236,7 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     message: 'Credentials validation API is running',
-    supportedServices: ['stripe', 'paypal', 'square', 'paypay', 'linepay', 'fincode'],
+    supportedServices: ['stripe', 'paypal', 'square', 'paypay', 'fincode'],
     timestamp: new Date().toISOString()
   });
 }

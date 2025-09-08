@@ -151,7 +151,6 @@ export default function CredentialsForm() {
       paypal: 'https://developer.paypal.com/api/rest/',
       square: 'https://developer.squareup.com/docs/build-basics/access-tokens',
       paypay: 'https://developer.paypay.ne.jp/',
-      linepay: 'https://pay.line.me/developers/apis/onlineApis',
       fincode: 'https://docs.fincode.jp/api',
     };
     return links[selectedService] || '#';
@@ -193,15 +192,6 @@ export default function CredentialsForm() {
           '法人アカウントで審査申請',
           '承認後、API認証情報を取得',
           'Merchant ID、API Key、API Secret をコピー'
-        ]
-      },
-      linepay: {
-        title: 'LINE Pay API認証情報の取得方法', 
-        steps: [
-          'LINE Pay Developers にアクセス',
-          'LINE Business アカウントで申請',
-          '審査完了後、Channel ID と Channel Secret を取得',
-          'ベータ環境または本番環境を選択'
         ]
       },
       fincode: {

@@ -1,4 +1,4 @@
-export type PaymentService = 'stripe' | 'paypal' | 'square' | 'paypay' | 'linepay' | 'fincode';
+export type PaymentService = 'stripe' | 'paypal' | 'square' | 'paypay' | 'fincode';
 
 export type Environment = 'test' | 'production' | 'sandbox' | 'live';
 
@@ -40,12 +40,6 @@ export interface PayPayCredentials {
   environment: 'test' | 'production';
 }
 
-export interface LinePayCredentials {
-  channelId: string;
-  channelSecret: string;
-  environment: 'beta' | 'real';
-}
-
 export interface FincodeCredentials {
   shopId: string;
   apiKey: string;
@@ -57,7 +51,6 @@ export type PaymentCredentials =
   | PayPalCredentials 
   | SquareCredentials 
   | PayPayCredentials 
-  | LinePayCredentials 
   | FincodeCredentials;
 
 export interface PaymentRequest {
