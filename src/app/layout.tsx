@@ -117,7 +117,6 @@ export default function RootLayout({
                     <li>PayPal</li>
                     <li>Square</li>
                     <li>PayPay</li>
-                    <li>LINE Pay</li>
                     <li>fincode by GMO</li>
                   </ul>
                 </div>

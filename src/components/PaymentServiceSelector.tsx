@@ -235,7 +235,7 @@ export default function PaymentServiceSelector() {
             </div>
             <div>
               <p className="font-medium mb-1">🇯🇵 日本国内メインなら:</p>
-              <p>PayPay, LINE Pay, fincodeがおすすめ</p>
+              <p>PayPay, fincodeがおすすめ</p>
             </div>
             <div>
               <p className="font-medium mb-1">💼 小規模事業なら:</p>
