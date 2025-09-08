@@ -1,4 +1,3 @@
-import '/Users/noriaki/.claude/browser-echo/client-snippet.js';
 import { PaymentServiceInfo } from '@/types/payment';
 
 export const PAYMENT_SERVICES: Record<string, PaymentServiceInfo> = {
