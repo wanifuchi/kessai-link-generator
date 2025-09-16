@@ -73,7 +73,17 @@ export const usePaymentStore = create<PaymentStore>()(
     }),
     {
       name: 'payment-generator-storage',
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => {
+        if (typeof window === 'undefined') {
+          // SSR環境では何もしない
+          return {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+          };
+        }
+        return sessionStorage;
+      }),
       // 認証情報など機密データは持続化しない
       partialize: (state) => ({
         selectedService: state.selectedService,
@@ -127,6 +137,6 @@ export const useCurrentStep = () =>
   });
 
 // デバッグ用（開発環境のみ）
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
   (window as any).paymentStore = usePaymentStore;
 }

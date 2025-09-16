@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { PrismaClient } from '@prisma/client';
 import { StripePaymentService } from '@/lib/payment-services/stripe';
 import { PaymentCredentials, PaymentRequest } from '@/types/payment';
+
+const prisma = new PrismaClient();
 
 // リクエストバリデーション
 const createPaymentLinkSchema = z.object({
@@ -75,19 +78,92 @@ export async function POST(request: NextRequest) {
       cancelUrl: paymentData.cancelUrl || undefined,
     };
 
-    // Stripe決済リンク生成
+    // まず仮のデータベースレコードを作成
+    const tempPaymentLink = await prisma.paymentLink.create({
+      data: {
+        title: cleanedPaymentData.productName,
+        description: cleanedPaymentData.description,
+        amount: cleanedPaymentData.amount,
+        currency: cleanedPaymentData.currency.toLowerCase(),
+        quantity: cleanedPaymentData.quantity || 1,
+        service: 'STRIPE',
+        serviceId: '', // 後で更新
+        paymentUrl: '', // 後で更新
+        qrCodeUrl: null,
+        qrCodeData: null,
+        customerEmail: cleanedPaymentData.customerEmail,
+        successUrl: cleanedPaymentData.successUrl,
+        cancelUrl: cleanedPaymentData.cancelUrl,
+        expiresAt: cleanedPaymentData.expiresAt ? new Date(cleanedPaymentData.expiresAt) : null,
+        status: 'ACTIVE',
+        metadata: {
+          ...cleanedPaymentData.metadata,
+          paymentLinkId: '' // 後で自分のIDで更新
+        },
+      }
+    });
+
+    // PaymentLinkIDをメタデータに含めてStripe決済リンクを生成
+    const enhancedPaymentData = {
+      ...cleanedPaymentData,
+      metadata: {
+        ...cleanedPaymentData.metadata,
+        paymentLinkId: tempPaymentLink.id,
+        dbRecordId: tempPaymentLink.id
+      }
+    };
+
     const stripeService = new StripePaymentService();
     const result = await stripeService.createPaymentLink(
       credentials as PaymentCredentials,
-      cleanedPaymentData
+      enhancedPaymentData
     );
 
     if (result.success) {
-      return NextResponse.json({
-        success: true,
-        data: result
-      });
+      try {
+        // データベースレコードを更新
+        const updatedPaymentLink = await prisma.paymentLink.update({
+          where: { id: tempPaymentLink.id },
+          data: {
+            serviceId: result.linkId || '',
+            paymentUrl: result.url || '',
+            qrCodeUrl: result.qrCode,
+            qrCodeData: result.qrCode,
+            metadata: {
+              ...enhancedPaymentData.metadata,
+              stripePaymentLinkId: result.linkId || '',
+              stripeUrl: result.url
+            }
+          }
+        });
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            ...result,
+            dbRecord: updatedPaymentLink
+          }
+        });
+      } catch (dbError) {
+        console.error('Database update error:', dbError);
+        // データベース更新に失敗した場合でも、仮レコードは存在するので警告付きで成功レスポンス
+        return NextResponse.json({
+          success: true,
+          data: result,
+          warning: 'Payment link created but database update failed',
+          dbRecordId: tempPaymentLink.id
+        });
+      }
     } else {
+      // Stripe決済リンク作成に失敗した場合は、作成した仮レコードを削除
+      try {
+        await prisma.paymentLink.delete({
+          where: { id: tempPaymentLink.id }
+        });
+      } catch (deleteError) {
+        console.error('Failed to clean up temporary payment link record:', deleteError);
+      }
+
       return NextResponse.json({
         success: false,
         error: result.error,
