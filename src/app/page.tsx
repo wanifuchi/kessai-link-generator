@@ -1,260 +1,342 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import PaymentServiceSelector from '@/components/PaymentServiceSelector';
-import CredentialsForm from '@/components/CredentialsForm';
-import PaymentInfoForm from '@/components/PaymentInfoForm';
-import PaymentLinkResult from '@/components/PaymentLinkResult';
-import { usePaymentStore, useCurrentStep } from '@/store/payment-store';
-import { ChevronRight, CreditCard, Key, FileText, ExternalLink } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { error as showError, success } from '@/hooks/use-toast';
+import { Plus, CreditCard, DollarSign, Eye, Calendar, BarChart3, ExternalLink, Copy, Search, Filter, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonLoader, EnhancedCardSkeleton } from '@/components/loading';
+
+interface PaymentLinkData {
+  id: string;
+  title: string;
+  amount: number;
+  currency: string;
+  service: string;
+  status: string;
+  createdAt: string;
+  completedAt?: string;
+}
 
 export default function HomePage() {
-  const currentStep = useCurrentStep();
-  const { selectedService, credentials, paymentRequest, generatedLink, reset } = usePaymentStore();
+  const [recentLinks, setRecentLinks] = useState<PaymentLinkData[]>([]);
+  const [filteredLinks, setFilteredLinks] = useState<PaymentLinkData[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  // ステップインジケーター
-  const steps = [
-    { id: 1, name: 'サービス選択', icon: CreditCard, description: '決済サービスを選択' },
-    { id: 2, name: 'API設定', icon: Key, description: 'API認証情報を入力' },
-    { id: 3, name: '決済情報', icon: FileText, description: '金額・商品情報を入力' },
-    { id: 4, name: 'リンク生成', icon: ExternalLink, description: '決済リンクを生成' },
-  ];
+  useEffect(() => {
+    fetchRecentLinks();
+  }, []);
 
-  const handleReset = () => {
-    reset();
+  const fetchRecentLinks = async () => {
+    try {
+      const response = await fetch('/api/payment-links?limit=10');
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        setRecentLinks(data.data.paymentLinks);
+        setFilteredLinks(data.data.paymentLinks);
+      }
+    } catch (error) {
+      console.error('決済リンク取得エラー:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 検索機能
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredLinks(recentLinks);
+    } else {
+      const filtered = recentLinks.filter(link =>
+        link.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        link.service.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        link.status.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredLinks(filtered);
+    }
+  }, [searchQuery, recentLinks]);
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      success('コピー完了', 'リンクをクリップボードにコピーしました');
+    } catch (error) {
+      showError('エラー', 'クリップボードへのコピーに失敗しました');
+    }
+  };
+
+  const formatAmount = (amount: number, currency: string) => {
+    return new Intl.NumberFormat('ja-JP', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+    }).format(amount / 100);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Intl.DateTimeFormat('ja-JP', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(dateString));
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'ACTIVE':
+        return <Badge variant="outline" className="text-green-600 border-green-200">アクティブ</Badge>;
+      case 'COMPLETED':
+        return <Badge variant="outline" className="text-blue-600 border-blue-200">完了</Badge>;
+      case 'EXPIRED':
+        return <Badge variant="outline" className="text-gray-600 border-gray-200">期限切れ</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getServiceBadge = (service: string) => {
+    switch (service.toLowerCase()) {
+      case 'stripe':
+        return <Badge className="bg-[#635bff] text-white">Stripe</Badge>;
+      case 'paypal':
+        return <Badge className="bg-[#0070ba] text-white">PayPal</Badge>;
+      default:
+        return <Badge variant="outline">{service}</Badge>;
+    }
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
-      <div className="flex justify-end mb-6">
-        <Button 
-          variant="outline" 
-          onClick={() => window.location.href = '/dashboard'}
-          className="flex items-center gap-2"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-          ダッシュボード
-        </Button>
-      </div>
-
-      {/* Hero Section */}
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          <span className="text-gradient">ユニバーサル</span>決済リンクジェネレーター
-        </h1>
-        <p className="text-xl text-gray-600 mb-6">
-          Stripe、PayPal、Square、PayPay、fincode - 
-          複数の決済サービスに対応した決済リンクを簡単に生成
-        </p>
-        <div className="flex justify-center items-center space-x-4 text-sm text-gray-500">
-          <div className="flex items-center">
-            <svg className="w-4 h-4 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            セキュア
-          </div>
-          <div className="flex items-center">
-            <svg className="w-4 h-4 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            高速
-          </div>
-          <div className="flex items-center">
-            <svg className="w-4 h-4 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            無料
+      <nav className="bg-white border-b border-gray-200">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <CreditCard className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">決済リンク管理</h1>
+                <p className="text-sm text-gray-600">Stripe・PayPal対応決済システム</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" asChild>
+                <Link href="/dashboard" className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  ダッシュボード
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/create" className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  新規作成
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Step Indicator */}
-      <Card className="mb-8">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <div className="flex items-center">
-                  <div className={`
-                    flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200
-                    ${currentStep >= step.id 
-                      ? 'bg-primary border-primary text-white' 
-                      : currentStep === step.id - 1
-                        ? 'border-primary text-primary'
-                        : 'border-gray-300 text-gray-400'
-                    }
-                  `}>
-                    <step.icon className="w-5 h-5" />
-                  </div>
-                  <div className="ml-3 hidden sm:block">
-                    <div className={`text-sm font-medium ${
-                      currentStep >= step.id ? 'text-primary' : 'text-gray-500'
-                    }`}>
-                      {step.name}
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      {step.description}
-                    </div>
-                  </div>
-                </div>
-                {index < steps.length - 1 && (
-                  <ChevronRight className={`w-5 h-5 mx-4 ${
-                    currentStep > step.id ? 'text-primary' : 'text-gray-300'
-                  }`} />
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Hero Section - Simplified */}
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            決済リンクを簡単作成
+          </h2>
+          <p className="text-lg text-gray-600 mb-8">
+            StripeとPayPalに対応した安全な決済リンクを数分で作成
+          </p>
 
-      {/* Reset Button */}
-      {currentStep > 1 && (
-        <div className="mb-6 flex justify-end">
-          <Button 
-            onClick={handleReset} 
-            variant="outline" 
-            className="text-sm"
-          >
-            最初からやり直す
+          <Button size="lg" asChild className="shadow-lg">
+            <Link href="/create" className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              新しい決済リンクを作成
+            </Link>
           </Button>
         </div>
-      )}
 
-      {/* Main Content */}
-      <div className="space-y-8">
-        {/* Step 1: Service Selection */}
-        {currentStep === 1 && (
-          <Card className="card-shadow">
+        {/* Main Content - Recent Payment Links with Search */}
+        <div className="max-w-4xl mx-auto">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <CreditCard className="w-6 h-6 mr-2 text-primary" />
-                決済サービスを選択
-              </CardTitle>
-              <CardDescription>
-                利用したい決済サービスを選択してください。各サービスの特徴と手数料を比較できます。
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PaymentServiceSelector />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 2: Credentials */}
-        {currentStep === 2 && selectedService && (
-          <Card className="card-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Key className="w-6 h-6 mr-2 text-primary" />
-                API認証情報を入力
-              </CardTitle>
-              <CardDescription>
-                {selectedService === 'stripe' && 'Stripe Dashboard から API キーを取得して入力してください。'}
-                {selectedService === 'paypal' && 'PayPal Developer から Client ID と Secret を取得して入力してください。'}
-                {selectedService === 'square' && 'Square Developer Dashboard から認証情報を取得して入力してください。'}
-                すべての認証情報は暗号化されて安全に処理されます。
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CredentialsForm />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 3: Payment Information */}
-        {currentStep === 3 && credentials && (
-          <Card className="card-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <FileText className="w-6 h-6 mr-2 text-primary" />
-                決済情報を入力
-              </CardTitle>
-              <CardDescription>
-                金額、商品名、その他の決済情報を入力してください。
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PaymentInfoForm />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 4: Generated Link */}
-        {currentStep >= 4 && paymentRequest && (
-          <Card className="card-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <ExternalLink className="w-6 h-6 mr-2 text-primary" />
-                決済リンク生成結果
-              </CardTitle>
-              <CardDescription>
-                生成された決済リンクとQRコードです。お客様と共有してご利用ください。
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PaymentLinkResult />
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Features Section */}
-      {currentStep === 1 && (
-        <div className="mt-16">
-          <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">
-            主な機能
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 0h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    決済リンク一覧
+                  </CardTitle>
+                  <CardDescription>
+                    作成した決済リンクの管理・コピー・確認
+                  </CardDescription>
                 </div>
-                <h3 className="text-lg font-semibold mb-2">セキュア</h3>
-                <p className="text-gray-600 text-sm">
-                  AES-256暗号化により、API認証情報を安全に保護します。
-                </p>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/dashboard" className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    詳細分析
+                  </Link>
+                </Button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="決済リンクを検索（タイトル、サービス、ステータス）..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+                {loading ? (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-center py-6">
+                      <div className="text-center space-y-4">
+                        <div className="relative">
+                          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-4 h-4 bg-blue-100 rounded-full animate-pulse"></div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-lg font-medium text-gray-800">決済リンクを読み込み中...</p>
+                          <p className="text-sm text-gray-500">データベースからデータを取得しています</p>
+                        </div>
+                        <div className="w-48 h-1 bg-gray-200 rounded-full mx-auto overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full animate-pulse"></div>
+                        </div>
+                      </div>
+                    </div>
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="border rounded-lg p-4 enhanced-loading">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <SkeletonLoader width="w-48" height="h-5" shimmer={true} />
+                              <SkeletonLoader width="w-16" height="h-5" shimmer={true} />
+                              <SkeletonLoader width="w-20" height="h-5" shimmer={true} />
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <SkeletonLoader width="w-24" height="h-4" shimmer={true} />
+                              <SkeletonLoader width="w-32" height="h-4" shimmer={true} />
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <SkeletonLoader width="w-10" height="h-8" shimmer={true} />
+                            <SkeletonLoader width="w-10" height="h-8" shimmer={true} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : filteredLinks.length > 0 ? (
+                  <div className="space-y-4">
+                    {filteredLinks.map((link) => (
+                      <div key={link.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-medium text-gray-900 truncate">
+                                {link.title}
+                              </h3>
+                              {getStatusBadge(link.status)}
+                              {getServiceBadge(link.service)}
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                              <span className="font-medium">
+                                {formatAmount(link.amount, link.currency)}
+                              </span>
+                              <span>{formatDate(link.createdAt)}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 ml-4">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => copyToClipboard(`${window.location.origin}/p/${link.id}`)}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" asChild>
+                              <Link href={`/p/${link.id}`}>
+                                <ExternalLink className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : searchQuery ? (
+                  <div className="text-center py-8">
+                    <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      検索結果が見つかりません
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      「{searchQuery}」に一致する決済リンクはありません
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => setSearchQuery('')}
+                      className="mr-2"
+                    >
+                      検索をクリア
+                    </Button>
+                    <Button asChild>
+                      <Link href="/create">
+                        <Plus className="h-4 w-4 mr-2" />
+                        新規作成
+                      </Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      決済リンクがまだありません
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      最初の決済リンクを作成しましょう
+                    </p>
+                    <Button asChild>
+                      <Link href="/create">
+                        <Plus className="h-4 w-4 mr-2" />
+                        新規作成
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+
+                {/* Show More Links Button */}
+                {!loading && filteredLinks.length > 0 && searchQuery === '' && (
+                  <div className="text-center pt-6 border-t">
+                    <p className="text-sm text-gray-500 mb-3">
+                      さらに多くの決済リンクと詳細な分析
+                    </p>
+                    <Button variant="outline" asChild>
+                      <Link href="/dashboard" className="flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4" />
+                        すべての決済リンクを表示
+                      </Link>
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
-
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold mb-2">高速生成</h3>
-                <p className="text-gray-600 text-sm">
-                  数秒で決済リンクとQRコードを同時生成できます。
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold mb-2">マルチサービス</h3>
-                <p className="text-gray-600 text-sm">
-                  6つの主要決済サービスに対応し、一元管理が可能です。
-                </p>
-              </CardContent>
-            </Card>
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

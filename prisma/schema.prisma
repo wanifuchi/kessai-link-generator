@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,104 +7,96 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ユーザー情報テーブル（将来的な拡張用）
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // リレーション
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  apiSettings  ApiSettings[]
   paymentLinks PaymentLink[]
 
   @@map("users")
 }
 
-// 決済リンクテーブル
 model PaymentLink {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  amount      Int      // 金額（セント単位）
-  currency    String   @default("jpy")
-  quantity    Int      @default(1)
-  
-  // 決済サービス情報
-  service     PaymentService
-  serviceId   String   // 各サービスでの決済リンクID
-  paymentUrl  String   // 生成された決済URL
-  
-  // QRコード情報
-  qrCodeUrl   String?  // QRコード画像URL
-  qrCodeData  String?  // QRコード生成データ
-  
-  // 顧客情報
+  id            String         @id @default(cuid())
+  title         String
+  description   String?
+  amount        Int
+  currency      String         @default("jpy")
+  quantity      Int            @default(1)
+  service       PaymentService
+  serviceId     String
+  paymentUrl    String
+  qrCodeUrl     String?
+  qrCodeData    String?
   customerEmail String?
-  
-  // リダイレクト設定
-  successUrl  String?
-  cancelUrl   String?
-  
-  // 有効期限
-  expiresAt   DateTime?
-  
-  // ステータス
-  status      PaymentStatus @default(ACTIVE)
-  
-  // メタデータ
-  metadata    Json?
-  
-  // タイムスタンプ
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  successUrl    String?
+  cancelUrl     String?
+  expiresAt     DateTime?
+  status        PaymentStatus  @default(ACTIVE)
+  metadata      Json?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  userId        String?
+  user          User?          @relation(fields: [userId], references: [id])
+  transactions  Transaction[]
 
-  // リレーション
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id])
-  
-  // トランザクション
-  transactions Transaction[]
-
+  @@index([createdAt])
+  @@index([service])
+  @@index([status])
+  @@index([userId, createdAt])
+  @@index([service, status])
   @@map("payment_links")
 }
 
-// トランザクションテーブル
 model Transaction {
-  id              String    @id @default(cuid())
-  
-  // 決済リンク情報
-  paymentLinkId   String
-  paymentLink     PaymentLink @relation(fields: [paymentLinkId], references: [id])
-  
-  // 決済情報
-  amount          Int       // 実際の決済金額
-  currency        String
-  service         PaymentService
-  serviceTransactionId String? // 各サービスでのトランザクションID
-  
-  // 顧客情報
-  customerEmail   String?
-  customerName    String?
-  customerPhone   String?
-  
-  // ステータス
-  status          TransactionStatus @default(PENDING)
-  
-  // 決済日時
-  paidAt          DateTime?
-  
-  // メタデータ
-  metadata        Json?
-  
-  // タイムスタンプ
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                   String            @id @default(cuid())
+  paymentLinkId        String
+  amount               Int
+  currency             String
+  service              PaymentService
+  serviceTransactionId String?
+  customerEmail        String?
+  customerName         String?
+  customerPhone        String?
+  status               TransactionStatus @default(PENDING)
+  paidAt               DateTime?
+  metadata             Json?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  paymentLink          PaymentLink       @relation(fields: [paymentLinkId], references: [id])
 
+  @@index([paymentLinkId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([paidAt])
+  @@index([service, status])
   @@map("transactions")
 }
 
-// 決済サービス列挙型
+model ApiSettings {
+  id          String         @id @default(cuid())
+  service     PaymentService
+  environment Environment    @default(SANDBOX)
+  publicKey   String?
+  secretKey   String
+  webhookUrl  String?
+  isActive    Boolean        @default(true)
+  description String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  userId      String?
+  user        User?          @relation(fields: [userId], references: [id])
+
+  @@unique([service, environment, userId])
+  @@index([userId])
+  @@index([isActive])
+  @@index([service, isActive])
+  @@map("api_settings")
+}
+
 enum PaymentService {
   STRIPE
   PAYPAL
@@ -116,19 +105,22 @@ enum PaymentService {
   FINCODE
 }
 
-// 決済リンクステータス
 enum PaymentStatus {
-  ACTIVE      // アクティブ
-  EXPIRED     // 期限切れ
-  DISABLED    // 無効化
-  COMPLETED   // 完了
+  ACTIVE
+  EXPIRED
+  DISABLED
+  COMPLETED
 }
 
-// トランザクションステータス
 enum TransactionStatus {
-  PENDING     // 保留中
-  COMPLETED   // 完了
-  FAILED      // 失敗
-  CANCELLED   // キャンセル
-  REFUNDED    // 返金
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum Environment {
+  SANDBOX
+  PRODUCTION
 }

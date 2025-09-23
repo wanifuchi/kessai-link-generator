@@ -5,20 +5,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  usePaymentStore, 
-  useSelectedService, 
-  useCredentials, 
+import {
+  usePaymentStore,
+  useSelectedService,
+  useCredentials,
   usePaymentRequest,
-  usePaymentActions 
+  usePaymentActions
 } from '@/store/payment-store';
 import { copyToClipboard, formatCurrency } from '@/lib/utils';
-import { getServiceInfo } from '@/lib/payment-services';
-import { 
-  ExternalLink, 
-  Copy, 
-  Check, 
-  QrCode, 
+import { getService } from '@/lib/payment-services';
+import { success, error as showError, info } from '@/hooks/use-toast';
+import {
+  ExternalLink,
+  Copy,
+  Check,
+  QrCode,
   Download,
   RefreshCw,
   AlertCircle,
@@ -66,16 +67,24 @@ export default function PaymentLinkResult() {
 
       if (result.success) {
         updateGeneratedLink(result.data);
+        success(
+          '決済リンクが生成されました',
+          `${formatCurrency(paymentRequest?.amount || 0, paymentRequest?.currency || 'JPY')}の決済リンクが正常に作成されました`
+        );
         // QRコードも同時生成
         if (result.data.url) {
           generateQRCode(result.data.url);
         }
       } else {
-        setError(result.error || '決済リンクの生成に失敗しました');
+        const errorMessage = result.error || '決済リンクの生成に失敗しました';
+        setError(errorMessage);
+        showError('決済リンク生成エラー', errorMessage);
       }
     } catch (error) {
       console.error('Payment link generation error:', error);
-      setError('サーバーとの通信に失敗しました');
+      const errorMessage = 'サーバーとの通信に失敗しました';
+      setError(errorMessage);
+      showError('通信エラー', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -112,10 +121,13 @@ export default function PaymentLinkResult() {
   };
 
   const handleCopy = async (text: string, type: string) => {
-    const success = await copyToClipboard(text);
-    if (success) {
+    const copySuccess = await copyToClipboard(text);
+    if (copySuccess) {
       setCopied(type);
       setTimeout(() => setCopied(null), 2000);
+      info('コピー完了', `${type === 'url' ? '決済リンク' : 'QRコード'}をクリップボードにコピーしました`);
+    } else {
+      showError('コピー失敗', 'クリップボードへのコピーに失敗しました');
     }
   };
 
@@ -126,6 +138,7 @@ export default function PaymentLinkResult() {
     link.download = `payment-qr-${Date.now()}.png`;
     link.href = qrCode;
     link.click();
+    info('ダウンロード開始', 'QRコードのダウンロードを開始しました');
   };
 
   const shareLink = async () => {
@@ -147,7 +160,7 @@ export default function PaymentLinkResult() {
     }
   };
 
-  const serviceInfo = selectedService ? getServiceInfo(selectedService) : null;
+  const serviceInfo = selectedService ? getService(selectedService) : null;
 
   if (isLoading) {
     return (

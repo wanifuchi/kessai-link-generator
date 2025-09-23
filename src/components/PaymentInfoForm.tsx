@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePaymentActions, useSelectedService } from '@/store/payment-store';
-import { getServiceInfo, SUPPORTED_CURRENCIES } from '@/lib/payment-services';
+import { getService } from '@/lib/payment-services';
 import { formatCurrency, getCurrencySymbol } from '@/lib/utils';
 import { Calculator, ShoppingCart, Mail, Calendar, Globe } from 'lucide-react';
 import { useState } from 'react';
@@ -54,13 +54,15 @@ export default function PaymentInfoForm() {
 
   if (!selectedService) return null;
 
-  const serviceInfo = getServiceInfo(selectedService);
+  const serviceInfo = getService(selectedService);
   if (!serviceInfo) return null;
 
   // サービスでサポートされている通貨を取得
-  const supportedCurrencies = SUPPORTED_CURRENCIES.filter(currency =>
-    serviceInfo.supportedCurrencies.includes(currency.code)
-  );
+  const supportedCurrencies = serviceInfo.supportedCurrencies.map(code => ({
+    code,
+    name: code,
+    symbol: getCurrencySymbol(code)
+  }));
 
   const {
     register,

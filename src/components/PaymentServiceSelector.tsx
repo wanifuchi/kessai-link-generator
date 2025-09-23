@@ -48,7 +48,9 @@ export default function PaymentServiceSelector() {
       <div className="service-grid">
         {services.map((service) => {
           const isSelected = selectedServiceId === service.id;
-          const useCases = SERVICE_USE_CASES[service.id];
+          const useCases = Object.entries(SERVICE_USE_CASES)
+            .filter(([_, serviceIds]) => serviceIds.includes(service.id))
+            .map(([useCase, _]) => useCase);
 
           return (
             <Card
@@ -112,7 +114,7 @@ export default function PaymentServiceSelector() {
                 {useCases && (
                   <div className="mb-4">
                     <div className="flex flex-wrap gap-1 mb-2">
-                      {useCases.bestFor.slice(0, 2).map((useCase, index) => (
+                      {useCases.slice(0, 2).map((useCase, index) => (
                         <Badge key={index} variant="secondary" className="text-xs">
                           {useCase}
                         </Badge>
@@ -144,28 +146,21 @@ export default function PaymentServiceSelector() {
                         ✅ メリット
                       </h4>
                       <ul className="text-xs text-gray-600 space-y-1">
-                        {useCases.pros.map((pro, index) => (
+                        {service.features.map((feature, index) => (
                           <li key={index} className="flex items-start">
                             <span className="mr-1">•</span>
-                            <span>{pro}</span>
+                            <span>{feature}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
 
-                    {/* Cons */}
+                    {/* Fee Info */}
                     <div>
-                      <h4 className="text-xs font-medium text-orange-700 mb-1">
-                        ⚠️ 注意点
+                      <h4 className="text-xs font-medium text-blue-700 mb-1">
+                        💰 手数料
                       </h4>
-                      <ul className="text-xs text-gray-600 space-y-1">
-                        {useCases.cons.map((con, index) => (
-                          <li key={index} className="flex items-start">
-                            <span className="mr-1">•</span>
-                            <span>{con}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <p className="text-xs text-gray-600">{service.feeRate}</p>
                     </div>
 
                     {/* Supported Features */}

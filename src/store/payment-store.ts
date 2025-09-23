@@ -137,6 +137,10 @@ export const useCurrentStep = () =>
   });
 
 // デバッグ用（開発環境のみ）
-if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-  (window as any).paymentStore = usePaymentStore;
+// Next.js SSR環境での安全な実行を保証
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  // クライアントサイドでのみ実行される処理として遅延実行
+  setTimeout(() => {
+    (window as any).paymentStore = usePaymentStore;
+  }, 0);
 }
