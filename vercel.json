@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "outputDirectory": ".next",
+  "functions": {
+    "app/api/**/*.js": {
+      "runtime": "nodejs22.x"
+    },
+    "app/api/**/*.ts": {
+      "runtime": "nodejs22.x"
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
