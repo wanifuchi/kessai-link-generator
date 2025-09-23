@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
         include: {
           transactions: {
             where: {
-              status: 'COMPLETED'
+              status: 'completed'
             }
           }
         }
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
         include: {
           transactions: {
             where: {
-              status: 'COMPLETED',
+              status: 'completed',
               paidAt: {
                 gte: startDate
               }
@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
       prisma.transaction.groupBy({
         by: ['service'],
         where: {
-          status: 'COMPLETED',
+          status: 'completed',
           paidAt: {
             gte: startDate
           }
@@ -196,7 +196,7 @@ export async function GET(request: NextRequest) {
       prisma.transaction.groupBy({
         by: ['currency'],
         where: {
-          status: 'COMPLETED',
+          status: 'completed',
           paidAt: {
             gte: startDate
           }
@@ -211,9 +211,9 @@ export async function GET(request: NextRequest) {
     ]);
 
     // 完了した取引
-    const completedTransactions = transactions.filter(t => t.status === 'COMPLETED');
-    const allCompleted = allTransactions.filter(t => t.status === 'COMPLETED');
-    const prevCompleted = prevTransactions.filter(t => t.status === 'COMPLETED');
+    const completedTransactions = transactions.filter(t => t.status === 'completed');
+    const allCompleted = allTransactions.filter(t => t.status === 'completed');
+    const prevCompleted = prevTransactions.filter(t => t.status === 'completed');
 
     // 総収益計算
     const totalRevenue = completedTransactions.reduce((sum, t) => sum + t.amount, 0);
@@ -379,7 +379,7 @@ function getLinksByStatusEnhanced(paymentLinks: any[]) {
 function getTopPerformingLinksEnhanced(paymentLinks: any[]) {
   return paymentLinks
     .map(link => {
-      const completedTransactions = link.transactions.filter((t: any) => t.status === 'COMPLETED');
+      const completedTransactions = link.transactions.filter((t: any) => t.status === 'completed');
       const revenue = completedTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
       const totalViews = Math.max(completedTransactions.length * 2, 1); // 仮の閲覧数
       const conversionRate = (completedTransactions.length / totalViews) * 100;
@@ -417,7 +417,7 @@ function getRecentActivity(recentLinks: any[], transactions: any[]) {
 
   // 決済完了アクティビティ
   transactions
-    .filter(t => t.status === 'COMPLETED')
+    .filter(t => t.status === 'completed')
     .slice(0, 5)
     .forEach(transaction => {
       activities.push({
@@ -434,7 +434,7 @@ function getRecentActivity(recentLinks: any[], transactions: any[]) {
 
   // 決済失敗アクティビティ
   transactions
-    .filter(t => t.status === 'FAILED')
+    .filter(t => t.status === 'failed')
     .slice(0, 3)
     .forEach(transaction => {
       activities.push({

@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
     
     const where: any = {};
-    if (service) where.service = service.toUpperCase();
-    if (status) where.status = status.toUpperCase();
+    if (service) where.service = service.toLowerCase();
+    if (status) where.status = status.toLowerCase();
     
     const [paymentLinks, total] = await Promise.all([
       prisma.paymentLink.findMany({
@@ -93,9 +93,9 @@ export async function POST(request: NextRequest) {
     const paymentLink = await prisma.paymentLink.create({
       data: {
         ...validatedData,
-        service: validatedData.service.toUpperCase() as any,
+        service: validatedData.service as any,
         expiresAt: validatedData.expiresAt ? new Date(validatedData.expiresAt) : null,
-        status: 'ACTIVE',
+        status: 'pending',
       },
     });
     

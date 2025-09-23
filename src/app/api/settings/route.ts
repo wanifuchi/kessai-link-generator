@@ -6,8 +6,8 @@ const prisma = new PrismaClient();
 
 // API設定のバリデーションスキーマ
 const apiSettingsSchema = z.object({
-  service: z.enum(['STRIPE', 'PAYPAL', 'SQUARE', 'PAYPAY', 'FINCODE']),
-  environment: z.enum(['SANDBOX', 'PRODUCTION']).default('SANDBOX'),
+  service: z.enum(['stripe', 'paypal', 'square', 'paypay', 'fincode']),
+  environment: z.enum(['sandbox', 'production']).default('sandbox'),
   publicKey: z.string().optional(),
   secretKey: z.string().min(1, '秘密キーは必須です'),
   webhookUrl: z.string().url().optional(),
@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
     const environment = searchParams.get('environment');
 
     const where: any = {};
-    if (service) where.service = service.toUpperCase();
-    if (environment) where.environment = environment.toUpperCase();
+    if (service) where.service = service.toLowerCase();
+    if (environment) where.environment = environment.toLowerCase();
 
     const settings = await prisma.apiSettings.findMany({
       where,

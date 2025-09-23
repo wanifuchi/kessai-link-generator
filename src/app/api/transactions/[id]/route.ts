@@ -11,7 +11,7 @@ const updateTransactionSchema = z.object({
   customerEmail: z.string().email().optional(),
   customerName: z.string().optional(),
   customerPhone: z.string().optional(),
-  status: z.enum(['PENDING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REFUNDED']).optional(),
+  status: z.enum(['pending', 'completed', 'failed', 'cancelled', 'refunded']).optional(),
   paidAt: z.string().datetime().optional(),
   metadata: z.record(z.any()).optional(),
 });
@@ -106,11 +106,11 @@ export async function PUT(
       }
     });
     
-    // ステータスがCOMPLETEDに変更された場合、決済リンクのステータスも更新
-    if (validatedData.status === 'COMPLETED' && existingTransaction.status !== 'COMPLETED') {
+    // ステータスがcompletedに変更された場合、決済リンクのステータスも更新
+    if (validatedData.status === 'completed' && existingTransaction.status !== 'completed') {
       await prisma.paymentLink.update({
         where: { id: existingTransaction.paymentLinkId },
-        data: { status: 'COMPLETED' }
+        data: { status: 'completed' }
       });
     }
     

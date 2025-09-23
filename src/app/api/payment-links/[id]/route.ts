@@ -14,7 +14,7 @@ const updatePaymentLinkSchema = z.object({
   successUrl: z.string().url().optional(),
   cancelUrl: z.string().url().optional(),
   expiresAt: z.string().datetime().optional(),
-  status: z.enum(['ACTIVE', 'EXPIRED', 'DISABLED', 'COMPLETED']).optional(),
+  status: z.enum(['pending', 'completed', 'failed', 'canceled', 'expired']).optional(),
   metadata: z.record(z.any()).optional(),
 });
 

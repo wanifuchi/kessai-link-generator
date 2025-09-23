@@ -9,12 +9,12 @@ const createTransactionSchema = z.object({
   paymentLinkId: z.string().min(1, '決済リンクIDは必須です'),
   amount: z.number().positive('金額は正の数である必要があります'),
   currency: z.string().min(3).max(3, '通貨コードは3文字である必要があります'),
-  service: z.enum(['STRIPE', 'PAYPAL', 'SQUARE', 'PAYPAY', 'FINCODE']),
+  service: z.enum(['stripe', 'paypal', 'square', 'paypay', 'fincode']),
   serviceTransactionId: z.string().optional(),
   customerEmail: z.string().email().optional(),
   customerName: z.string().optional(),
   customerPhone: z.string().optional(),
-  status: z.enum(['PENDING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REFUNDED']).default('PENDING'),
+  status: z.enum(['pending', 'completed', 'failed', 'cancelled', 'refunded']).default('pending'),
   paidAt: z.string().datetime().optional(),
   metadata: z.record(z.any()).optional(),
 });
@@ -113,10 +113,10 @@ export async function POST(request: NextRequest) {
     });
     
     // 決済が完了した場合、決済リンクのステータスを更新
-    if (validatedData.status === 'COMPLETED') {
+    if (validatedData.status === 'completed') {
       await prisma.paymentLink.update({
         where: { id: validatedData.paymentLinkId },
-        data: { status: 'COMPLETED' }
+        data: { status: 'completed' }
       });
     }
     

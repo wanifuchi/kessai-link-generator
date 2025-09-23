@@ -138,7 +138,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       await prisma.transaction.update({
         where: { id: existingTransaction.id },
         data: {
-          status: 'COMPLETED',
+          status: 'completed',
           paidAt: new Date(),
           customerEmail: session.customer_details?.email || undefined,
           customerName: session.customer_details?.name || undefined,
@@ -154,10 +154,10 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       await prisma.transaction.create({
         data: {
           paymentLinkId,
-          status: 'COMPLETED',
+          status: 'completed',
           amount: session.amount_total || 0,
           currency: (session.currency || 'jpy').toUpperCase(),
-          service: 'STRIPE',
+          service: 'stripe',
           serviceTransactionId: session.id,
           paidAt: new Date(),
           customerEmail: session.customer_details?.email || undefined,
@@ -173,11 +173,11 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     }
 
     // PaymentLinkのステータスを更新（必要に応じて）
-    if (paymentLink.status === 'ACTIVE') {
+    if (paymentLink.status === 'pending') {
       await prisma.paymentLink.update({
         where: { id: paymentLinkId },
         data: {
-          status: 'COMPLETED',
+          status: 'completed',
         },
       });
     }
@@ -204,7 +204,7 @@ async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
     // PaymentLinkのステータスを期限切れに更新
     await prisma.paymentLink.update({
       where: { id: paymentLinkId },
-      data: { status: 'EXPIRED' },
+      data: { status: 'expired' },
     });
 
     console.log('Successfully processed session expiration:', session.id);
@@ -231,7 +231,7 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
       await prisma.transaction.update({
         where: { id: transaction.id },
         data: {
-          status: 'COMPLETED',
+          status: 'completed',
           paidAt: new Date(),
           metadata: {
             ...transaction.metadata as object,
@@ -267,7 +267,7 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
         await prisma.transaction.update({
           where: { id: existingTransaction.id },
           data: {
-            status: 'FAILED',
+            status: 'failed',
             metadata: {
               paymentIntentId: paymentIntent.id,
               failureReason: paymentIntent.last_payment_error?.message || 'Payment failed',
@@ -282,9 +282,9 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
             paymentLinkId,
             amount: paymentIntent.amount,
             currency: paymentIntent.currency.toUpperCase(),
-            service: 'STRIPE',
+            service: 'stripe',
             serviceTransactionId: paymentIntent.id,
-            status: 'FAILED',
+            status: 'failed',
             metadata: {
               paymentIntentId: paymentIntent.id,
               failureReason: paymentIntent.last_payment_error?.message || 'Payment failed',

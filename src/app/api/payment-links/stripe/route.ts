@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       where: { id: validatedData.apiSettingId }
     });
 
-    if (!apiSetting || apiSetting.service !== 'STRIPE' || !apiSetting.isActive) {
+    if (!apiSetting || apiSetting.service !== 'stripe' || !apiSetting.isActive) {
       return NextResponse.json({
         success: false,
         error: '有効なStripe API設定が見つかりません'
@@ -77,10 +77,10 @@ export async function POST(request: NextRequest) {
           amount: validatedData.amount,
           currency: validatedData.currency,
           quantity: 1,
-          service: 'STRIPE',
+          service: 'stripe',
           serviceId: paymentLink.id, // StripeのPayment Link ID
           paymentUrl: paymentLink.url, // Stripeの決済URL
-          status: 'ACTIVE',
+          status: 'pending',
           // メタデータに詳細情報を保存
           metadata: {
             stripeProductId: product.id,
@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
 
     const [paymentLinks, total] = await Promise.all([
       prisma.paymentLink.findMany({
-        where: { service: 'STRIPE' },
+        where: { service: 'stripe' },
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
           }
         }
       }),
-      prisma.paymentLink.count({ where: { service: 'STRIPE' } })
+      prisma.paymentLink.count({ where: { service: 'stripe' } })
     ]);
 
     return NextResponse.json({

@@ -35,7 +35,7 @@ model PaymentLink {
   successUrl    String?
   cancelUrl     String?
   expiresAt     DateTime?
-  status        PaymentStatus  @default(ACTIVE)
+  status        PaymentStatus  @default(pending)
   metadata      Json?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -61,7 +61,7 @@ model Transaction {
   customerEmail        String?
   customerName         String?
   customerPhone        String?
-  status               TransactionStatus @default(PENDING)
+  status               TransactionStatus @default(pending)
   paidAt               DateTime?
   metadata             Json?
   createdAt            DateTime          @default(now())
@@ -79,7 +79,7 @@ model Transaction {
 model ApiSettings {
   id          String         @id @default(cuid())
   service     PaymentService
-  environment Environment    @default(SANDBOX)
+  environment Environment    @default(sandbox)
   publicKey   String?
   secretKey   String
   webhookUrl  String?
@@ -98,29 +98,30 @@ model ApiSettings {
 }
 
 enum PaymentService {
-  STRIPE
-  PAYPAL
-  SQUARE
-  PAYPAY
-  FINCODE
+  stripe
+  paypal
+  square
+  paypay
+  fincode
 }
 
 enum PaymentStatus {
-  ACTIVE
-  EXPIRED
-  DISABLED
-  COMPLETED
+  pending
+  completed
+  failed
+  canceled
+  expired
 }
 
 enum TransactionStatus {
-  PENDING
-  COMPLETED
-  FAILED
-  CANCELLED
-  REFUNDED
+  pending
+  completed
+  failed
+  cancelled
+  refunded
 }
 
 enum Environment {
-  SANDBOX
-  PRODUCTION
+  sandbox
+  production
 }

@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
-    if (paymentLink.status !== 'ACTIVE') {
+    if (paymentLink.status !== 'pending') {
       return NextResponse.json({
         success: false,
         error: 'Payment link is not active'
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
       // 支払いをキャプチャ
       const captureResult = await paypalService.captureOrder(orderId);
 
-      if (captureResult.status === 'COMPLETED') {
+      if (captureResult.status === 'completed') {
         // データベースの更新
         const capture = captureResult.purchase_units[0].payments.captures[0];
 
@@ -109,9 +109,9 @@ export async function GET(request: NextRequest) {
             paymentLinkId,
             amount: parseInt((parseFloat(capture.amount.value) * 100).toString()), // セント単位に変換
             currency: capture.amount.currency_code.toUpperCase(),
-            service: 'PAYPAL',
+            service: 'paypal',
             serviceTransactionId: capture.id,
-            status: 'COMPLETED',
+            status: 'completed',
             paidAt: new Date(),
             customerEmail: captureResult.payer?.email_address,
             customerName: `${captureResult.payer?.name?.given_name || ''} ${captureResult.payer?.name?.surname || ''}`.trim(),
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
         await prisma.paymentLink.update({
           where: { id: paymentLinkId },
           data: {
-            status: 'COMPLETED',
+            status: 'completed',
           },
         });
 

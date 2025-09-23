@@ -102,7 +102,7 @@ async function handleOrderApproved(event: any) {
       await prisma.transaction.update({
         where: { id: existingTransaction.id },
         data: {
-          status: 'PENDING',
+          status: 'pending',
           metadata: {
             paypalOrderId: orderId,
             orderApprovedAt: new Date().toISOString(),
@@ -117,9 +117,9 @@ async function handleOrderApproved(event: any) {
           paymentLinkId: customId,
           amount: parseInt((parseFloat(event.resource.purchase_units[0].amount.value) * 100).toString()),
           currency: event.resource.purchase_units[0].amount.currency_code.toUpperCase(),
-          service: 'PAYPAL',
+          service: 'paypal',
           serviceTransactionId: orderId,
-          status: 'PENDING',
+          status: 'pending',
           metadata: {
             paypalOrderId: orderId,
             orderApprovedAt: new Date().toISOString(),
@@ -160,7 +160,7 @@ async function handlePaymentCaptureCompleted(event: any) {
       await prisma.transaction.update({
         where: { id: transaction.id },
         data: {
-          status: 'COMPLETED',
+          status: 'completed',
           paidAt: new Date(),
           serviceTransactionId: captureId,
           customerEmail: event.resource.payer?.email_address,
@@ -178,7 +178,7 @@ async function handlePaymentCaptureCompleted(event: any) {
       await prisma.paymentLink.update({
         where: { id: transaction.paymentLinkId },
         data: {
-          status: 'COMPLETED',
+          status: 'completed',
         },
       });
     }
@@ -213,7 +213,7 @@ async function handlePaymentCaptureDenied(event: any) {
       await prisma.transaction.update({
         where: { id: transaction.id },
         data: {
-          status: 'FAILED',
+          status: 'failed',
           metadata: {
             ...transaction.metadata as object,
             paypalCaptureId: captureId,
@@ -250,7 +250,7 @@ async function handlePaymentCapturePending(event: any) {
       await prisma.transaction.update({
         where: { id: transaction.id },
         data: {
-          status: 'PENDING',
+          status: 'pending',
           metadata: {
             ...transaction.metadata as object,
             paypalCaptureId: captureId,
@@ -291,9 +291,9 @@ async function handlePaymentCaptureRefunded(event: any) {
           paymentLinkId: originalTransaction.paymentLinkId,
           amount: -parseInt((parseFloat(event.resource.amount.value) * 100).toString()), // 負の値で返金を表現
           currency: event.resource.amount.currency_code.toUpperCase(),
-          service: 'PAYPAL',
+          service: 'paypal',
           serviceTransactionId: refundId,
-          status: 'COMPLETED',
+          status: 'completed',
           paidAt: new Date(),
           metadata: {
             refundId: refundId,
