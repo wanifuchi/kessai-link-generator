@@ -471,21 +471,3 @@ export default function CredentialsForm() {
   );
 }
 
-// Alert コンポーネントが不足している場合の簡易実装
-const Alert = ({ children, className = '', ...props }: {
-  children: React.ReactNode;
-  className?: string;
-}) => (
-  <div className={`rounded-lg border p-4 ${className}`} {...props}>
-    {children}
-  </div>
-);
-
-const AlertDescription = ({ children, className = '', ...props }: {
-  children: React.ReactNode;
-  className?: string;
-}) => (
-  <div className={`text-sm ${className}`} {...props}>
-    {children}
-  </div>
-);

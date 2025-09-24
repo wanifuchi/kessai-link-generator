@@ -127,6 +127,6 @@ export const useCurrentStep = () =>
   });
 
 // デバッグ用（開発環境のみ）
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
   (window as any).paymentStore = usePaymentStore;
 }
