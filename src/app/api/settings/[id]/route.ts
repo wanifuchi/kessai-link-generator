@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 // API設定更新のバリデーションスキーマ
 const updateApiSettingsSchema = z.object({
-  publicKey: z.string().optional(),
+  publishableKey: z.string().optional(),
   secretKey: z.string().optional(),
   webhookUrl: z.string().url().optional(),
   description: z.string().optional(),
@@ -26,7 +26,7 @@ export async function GET(
         id: true,
         service: true,
         environment: true,
-        publicKey: true,
+        publishableKey: true,
         // 秘密キーは除外
         webhookUrl: true,
         description: true,
@@ -87,8 +87,8 @@ export async function PUT(
     // if (validatedData.secretKey) {
     //   updateData.secretKey = await encrypt(validatedData.secretKey);
     // }
-    // if (validatedData.publicKey) {
-    //   updateData.publicKey = await encrypt(validatedData.publicKey);
+    // if (validatedData.publishableKey) {
+    //   updateData.publishableKey = await encrypt(validatedData.publishableKey);
     // }
 
     const updatedSetting = await prisma.apiSettings.update({
@@ -98,7 +98,7 @@ export async function PUT(
         id: true,
         service: true,
         environment: true,
-        publicKey: true,
+        publishableKey: true,
         // 秘密キーは返さない
         webhookUrl: true,
         description: true,

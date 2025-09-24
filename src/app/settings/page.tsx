@@ -16,7 +16,7 @@ interface ApiSetting {
   id: string;
   service: string;
   environment: string;
-  publicKey?: string;
+  publishableKey?: string;
   webhookUrl?: string;
   description?: string;
   isActive: boolean;
@@ -27,10 +27,11 @@ interface ApiSetting {
 interface FormData {
   service: string;
   environment: string;
-  publicKey: string;
+  publishableKey: string;
   secretKey: string;
   webhookUrl: string;
   description: string;
+  isActive?: boolean;
 }
 
 export default function SettingsPage() {
@@ -44,11 +45,12 @@ export default function SettingsPage() {
 
   const [formData, setFormData] = useState<FormData>({
     service: '',
-    environment: 'SANDBOX',
-    publicKey: '',
+    environment: 'sandbox',
+    publishableKey: '',
     secretKey: '',
     webhookUrl: '',
     description: '',
+    isActive: true,
   });
 
   useEffect(() => {
@@ -88,11 +90,12 @@ export default function SettingsPage() {
   const resetForm = () => {
     setFormData({
       service: '',
-      environment: 'SANDBOX',
-      publicKey: '',
+      environment: 'sandbox',
+      publishableKey: '',
       secretKey: '',
       webhookUrl: '',
       description: '',
+      isActive: true,
     });
     setEditingId(null);
     setShowForm(false);
@@ -116,12 +119,25 @@ export default function SettingsPage() {
       const url = editingId ? `/api/settings/${editingId}` : '/api/settings';
       const method = editingId ? 'PUT' : 'POST';
 
+      console.log('送信データ:', formData);
+
+      // 空文字列のoptionalフィールドをundefinedに変換
+      const requestData = {
+        ...formData,
+        publishableKey: formData.publishableKey || undefined,
+        webhookUrl: formData.webhookUrl || undefined,
+        description: formData.description || undefined,
+        isActive: formData.isActive ?? true,
+      };
+
+      console.log('実際の送信データ:', requestData);
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(requestData),
       });
 
       const data = await response.json();
@@ -135,6 +151,7 @@ export default function SettingsPage() {
         resetForm();
         loadSettings();
       } else {
+        console.error('API詳細エラー:', data);
         throw new Error(data.error || 'API設定の操作に失敗しました');
       }
     } catch (error) {
@@ -153,10 +170,11 @@ export default function SettingsPage() {
     setFormData({
       service: setting.service,
       environment: setting.environment,
-      publicKey: setting.publicKey || '',
+      publishableKey: setting.publishableKey || '',
       secretKey: '', // セキュリティのため空にする
       webhookUrl: setting.webhookUrl || '',
       description: setting.description || '',
+      isActive: setting.isActive,
     });
     setEditingId(setting.id);
     setShowForm(true);
@@ -201,17 +219,17 @@ export default function SettingsPage() {
 
   const getServiceDisplayName = (service: string) => {
     const serviceNames: { [key: string]: string } = {
-      STRIPE: 'Stripe',
-      PAYPAL: 'PayPal',
-      SQUARE: 'Square',
-      PAYPAY: 'PayPay',
-      FINCODE: 'fincode',
+      stripe: 'Stripe',
+      paypal: 'PayPal',
+      square: 'Square',
+      paypay: 'PayPay',
+      fincode: 'fincode',
     };
     return serviceNames[service] || service;
   };
 
   const getEnvironmentDisplayName = (environment: string) => {
-    return environment === 'SANDBOX' ? 'サンドボックス' : '本番環境';
+    return environment === 'sandbox' ? 'サンドボックス' : '本番環境';
   };
 
   return (
@@ -266,11 +284,11 @@ export default function SettingsPage() {
                         <SelectValue placeholder="サービスを選択" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="STRIPE">Stripe</SelectItem>
-                        <SelectItem value="PAYPAL">PayPal</SelectItem>
-                        <SelectItem value="SQUARE">Square</SelectItem>
-                        <SelectItem value="PAYPAY">PayPay</SelectItem>
-                        <SelectItem value="FINCODE">fincode</SelectItem>
+                        <SelectItem value="stripe">Stripe</SelectItem>
+                        <SelectItem value="paypal">PayPal</SelectItem>
+                        <SelectItem value="square">Square</SelectItem>
+                        <SelectItem value="paypay">PayPay</SelectItem>
+                        <SelectItem value="fincode">fincode</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -287,8 +305,8 @@ export default function SettingsPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="SANDBOX">サンドボックス（テスト）</SelectItem>
-                        <SelectItem value="PRODUCTION">本番環境</SelectItem>
+                        <SelectItem value="sandbox">サンドボックス（テスト）</SelectItem>
+                        <SelectItem value="production">本番環境</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -296,13 +314,13 @@ export default function SettingsPage() {
 
                 {/* 公開キー */}
                 <div className="space-y-2">
-                  <Label htmlFor="publicKey">公開キー（任意）</Label>
+                  <Label htmlFor="publishableKey">パブリッシャブルキー（任意）</Label>
                   <Input
-                    id="publicKey"
+                    id="publishableKey"
                     type="text"
                     placeholder="公開可能なキーを入力"
-                    value={formData.publicKey}
-                    onChange={(e) => handleInputChange('publicKey', e.target.value)}
+                    value={formData.publishableKey}
+                    onChange={(e) => handleInputChange('publishableKey', e.target.value)}
                   />
                 </div>
 
@@ -436,7 +454,7 @@ export default function SettingsPage() {
                           {getServiceDisplayName(setting.service)}
                         </h3>
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          setting.environment === 'PRODUCTION'
+                          setting.environment === 'production'
                             ? 'bg-red-100 text-red-800'
                             : 'bg-yellow-100 text-yellow-800'
                         }`}>
@@ -452,8 +470,8 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="space-y-1 text-sm text-gray-600">
-                        {setting.publicKey && (
-                          <p><span className="font-medium">公開キー:</span> {setting.publicKey}</p>
+                        {setting.publishableKey && (
+                          <p><span className="font-medium">パブリッシャブルキー:</span> {setting.publishableKey}</p>
                         )}
                         {setting.webhookUrl && (
                           <p><span className="font-medium">Webhook URL:</span> {setting.webhookUrl}</p>
