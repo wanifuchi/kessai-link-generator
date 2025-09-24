@@ -126,7 +126,7 @@ export default function SettingsPage() {
   // フィールドのサニタイズと検証
   const sanitizeAndValidate = (data: FormData) => {
     const sanitized = { ...data };
-    const contaminations = [];
+    const contaminations: string[] = [];
 
     // 異常な文字列パターンを検出
     const suspiciousPatterns = [
@@ -146,7 +146,7 @@ export default function SettingsPage() {
           if (pattern.test(value)) {
             contaminations.push(`${key}: 異常な文字列を検出`);
             // 汚染された値をクリア
-            sanitized[key as keyof FormData] = '' as any;
+            (sanitized as any)[key] = '';
           }
         }
       }
