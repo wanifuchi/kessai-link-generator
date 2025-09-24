@@ -1,13 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    // Next.js 15の新機能対応
-  },
   images: {
     domains: ['assets.stripe.com', 'www.paypalobjects.com', 'squareup.com'],
-  },
-  env: {
-    // 環境変数のカスタム設定
   },
   async headers() {
     return [
