@@ -4,6 +4,7 @@ import './globals.css'
 import ErrorBoundary from '@/components/error-boundary'
 import { Toaster } from '@/components/ui/toaster'
 import Footer from '@/components/Footer'
+import { Providers } from './providers'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -45,8 +46,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className={inter.className}>
-        <ErrorBoundary>
-          <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+        <Providers>
+          <ErrorBoundary>
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
             {/* Header */}
             <header className="bg-white shadow-sm border-b">
               <div className="container mx-auto px-4 py-4">
@@ -108,6 +110,7 @@ export default function RootLayout({
           </div>
           <Toaster />
         </ErrorBoundary>
+        </Providers>
       </body>
     </html>
   )

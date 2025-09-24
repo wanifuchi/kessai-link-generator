@@ -25,6 +25,15 @@ export default function CreatePaymentLinkPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [apiSettingsLoading, setApiSettingsLoading] = useState(true);
+
+  // デバッグ用の強制的な状態解除（10秒後）
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      console.log('強制的にローディング状態を解除');
+      setApiSettingsLoading(false);
+    }, 10000);
+    return () => clearTimeout(timeout);
+  }, []);
   const [apiSettings, setApiSettings] = useState<ApiSetting[]>([]);
   const [selectedApiSetting, setSelectedApiSetting] = useState<string>('');
 
@@ -42,19 +51,26 @@ export default function CreatePaymentLinkPage() {
 
   const loadApiSettings = async () => {
     try {
+      console.log('API設定を読み込み中...');
       const response = await fetch('/api/settings');
+      console.log('API応答:', response.status, response.statusText);
+
       const data = await response.json();
+      console.log('取得したデータ:', data);
 
       if (data.success) {
         // アクティブな設定のみを表示
         const activeSettings = data.data.filter((setting: ApiSetting) => setting.isActive);
+        console.log('アクティブな設定:', activeSettings);
         setApiSettings(activeSettings);
+        console.log('API設定の読み込み完了');
       } else {
         console.error('API設定の取得に失敗しました:', data.error);
       }
     } catch (error) {
       console.error('API設定取得エラー:', error);
     } finally {
+      console.log('読み込み状態を完了に設定');
       setApiSettingsLoading(false);
     }
   };
@@ -68,13 +84,13 @@ export default function CreatePaymentLinkPage() {
 
   const getServiceDisplayName = (service: string) => {
     const serviceNames: { [key: string]: string } = {
-      STRIPE: 'Stripe',
-      PAYPAL: 'PayPal',
-      SQUARE: 'Square',
-      PAYPAY: 'PayPay',
-      FINCODE: 'fincode',
+      stripe: 'Stripe',
+      paypal: 'PayPal',
+      square: 'Square',
+      paypay: 'PayPay',
+      fincode: 'fincode',
     };
-    return serviceNames[service] || service;
+    return serviceNames[service.toLowerCase()] || service;
   };
 
   const formatAmount = (value: string): number => {
@@ -121,6 +137,16 @@ export default function CreatePaymentLinkPage() {
       return;
     }
 
+    const stripeAmount = formatAmount(formData.amount);
+    if (stripeAmount > 99999999) {
+      toast({
+        title: 'エラー',
+        description: `金額が上限を超えています。99,999,999円以下で入力してください（入力値: ${amount.toLocaleString()}円）`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -143,9 +169,9 @@ export default function CreatePaymentLinkPage() {
       console.log('送信データ:', requestData);
 
       // 選択されたサービスに応じてAPIエンドポイントを選択
-      const apiEndpoint = selectedSetting.service === 'STRIPE'
+      const apiEndpoint = selectedSetting.service === 'stripe'
         ? '/api/payment-links/stripe'
-        : selectedSetting.service === 'PAYPAL'
+        : selectedSetting.service === 'paypal'
         ? '/api/payment-links/paypal'
         : '/api/payment-links'; // その他のサービス
 
@@ -323,7 +349,7 @@ export default function CreatePaymentLinkPage() {
                             <CreditCard className="h-4 w-4" />
                             <span>
                               {getServiceDisplayName(setting.service)}
-                              ({setting.environment === 'SANDBOX' ? 'サンドボックス' : '本番環境'})
+                              ({setting.environment === 'sandbox' ? 'サンドボックス' : '本番環境'})
                             </span>
                           </div>
                         </SelectItem>

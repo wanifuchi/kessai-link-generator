@@ -9,14 +9,32 @@ datasource db {
 
 model User {
   id           String        @id @default(cuid())
+  stackUserId  String?       @unique // Stack AuthのUser ID
   email        String        @unique
   name         String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   apiSettings  ApiSettings[]
   paymentLinks PaymentLink[]
+  subscription Subscription?
 
   @@map("users")
+}
+
+model Subscription {
+  id                     String               @id @default(cuid())
+  userId                 String               @unique
+  user                   User                 @relation(fields: [userId], references: [id])
+  stripeCustomerId       String               @unique
+  stripeSubscriptionId   String               @unique
+  status                 SubscriptionStatus
+  currentPeriodEnd       DateTime?
+  cancelAt               DateTime?
+  cancelAtPeriodEnd      Boolean              @default(false)
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  @@map("subscriptions")
 }
 
 model PaymentLink {
@@ -95,6 +113,15 @@ model ApiSettings {
   @@index([isActive])
   @@index([service, isActive])
   @@map("api_settings")
+}
+
+enum SubscriptionStatus {
+  active
+  trialing
+  past_due
+  canceled
+  incomplete
+  unpaid
 }
 
 enum PaymentService {

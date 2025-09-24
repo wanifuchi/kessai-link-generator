@@ -63,12 +63,19 @@ export async function GET(request: NextRequest) {
     console.error('DATABASE_URL status:', process.env.DATABASE_URL ? 'SET' : 'NOT_SET');
 
     // データベース接続エラーの場合は一時的に空のリストを返す
-    if (error instanceof Error && error.message.includes('connect')) {
+    if (error instanceof Error && (
+      error.message.includes('connect') ||
+      error.message.includes('timeout') ||
+      error.message.includes('ECONNREFUSED') ||
+      error.message.includes('Can\'t reach database server')
+    )) {
+      console.warn('データベース接続エラーが発生しました:', error.message);
       return NextResponse.json({
         success: true,
         data: [],
-        warning: 'データベース接続エラー - 空のリストを返します',
-        details: error.message
+        warning: 'データベース接続エラー - 一時的に設定を読み込めません',
+        details: error.message,
+        recovery: 'しばらく待ってから再試行してください'
       });
     }
 
@@ -152,13 +159,37 @@ export async function POST(request: NextRequest) {
       console.error('データベース操作エラー:', dbError);
 
       // データベース接続エラーの場合
-      if (dbError instanceof Error && dbError.message.includes('Environment variable not found: DATABASE_URL')) {
-        console.warn('DATABASE_URLが設定されていません - API設定作成を拒否');
+      if (dbError instanceof Error && (
+        dbError.message.includes('Environment variable not found: DATABASE_URL') ||
+        dbError.message.includes('connect') ||
+        dbError.message.includes('timeout') ||
+        dbError.message.includes('ECONNREFUSED') ||
+        dbError.message.includes('Can\'t reach database server')
+      )) {
+        console.warn('データベース接続エラーが発生しました:', dbError.message);
+
+        // DATABASE_URL未設定の場合
+        if (dbError.message.includes('Environment variable not found: DATABASE_URL')) {
+          return NextResponse.json({
+            success: false,
+            error: 'データベース接続が設定されていません',
+            details: 'DATABASE_URL環境変数を設定してください',
+            recovery: '環境変数を設定後、サーバーを再起動してください',
+            debugInfo: {
+              errorMessage: dbError.message,
+              validatedData: { ...validatedData, secretKey: '[MASKED]' }
+            }
+          }, { status: 503 });
+        }
+
+        // その他の接続エラー
         return NextResponse.json({
           success: false,
-          error: 'データベース接続が設定されていません',
-          details: 'DATABASE_URL環境変数を設定してください',
+          error: 'データベース接続エラー',
+          details: 'データベースに接続できません',
+          recovery: 'しばらく待ってから再試行してください',
           debugInfo: {
+            errorType: 'CONNECTION_ERROR',
             errorMessage: dbError.message,
             validatedData: { ...validatedData, secretKey: '[MASKED]' }
           }

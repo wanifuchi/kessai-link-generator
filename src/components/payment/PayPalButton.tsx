@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react';
 
 interface PayPalButtonProps {
   paymentLinkId: string;
+  paymentUrl?: string;
   amount: number;
   currency: string;
   title: string;
@@ -18,6 +19,7 @@ interface PayPalButtonProps {
 
 export default function PayPalButton({
   paymentLinkId,
+  paymentUrl,
   amount,
   currency,
   title,
@@ -34,33 +36,18 @@ export default function PayPalButton({
     setIsLoading(true);
 
     try {
-      // PayPal決済リンクを作成
-      const response = await fetch('/api/payment-links/paypal', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          paymentLinkId,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'PayPal決済の作成に失敗しました');
-      }
-
-      if (data.success && data.paymentUrl) {
-        // PayPal決済ページにリダイレクト
-        window.location.href = data.paymentUrl;
+      // 既にpaymentUrlが存在する場合は直接リダイレクト
+      if (paymentUrl) {
+        window.location.href = paymentUrl;
 
         if (onSuccess) {
-          onSuccess(data);
+          onSuccess({ paymentUrl });
         }
-      } else {
-        throw new Error(data.error || 'PayPal決済URLの取得に失敗しました');
+        return;
       }
+
+      // paymentUrlが無い場合のエラー処理
+      throw new Error('PayPal決済URLが見つかりません');
 
     } catch (error) {
       console.error('PayPal決済エラー:', error);
@@ -79,11 +66,14 @@ export default function PayPalButton({
 
   // 金額を表示用にフォーマット
   const formatAmount = (amount: number, currency: string) => {
+    // JPYの場合はそのまま、その他の通貨は100で割る
+    const displayAmount = currency.toLowerCase() === 'jpy' ? amount : amount / 100;
+
     return new Intl.NumberFormat('ja-JP', {
       style: 'currency',
       currency: currency.toUpperCase(),
       minimumFractionDigits: 0,
-    }).format(amount / 100);
+    }).format(displayAmount);
   };
 
   return (

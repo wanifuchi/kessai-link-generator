@@ -19,6 +19,7 @@ interface PaymentLinkData {
   currency: string;
   status: string;
   service: string;
+  paymentUrl?: string;
   expiresAt?: string;
   createdAt: string;
   metadata?: any;
@@ -65,29 +66,14 @@ export default function PaymentLinkPage() {
     setProcessingStripe(true);
 
     try {
-      // Stripe決済リンクを作成
-      const response = await fetch('/api/payment-links/stripe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          paymentLinkId,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Stripe決済の作成に失敗しました');
+      // 既にpaymentUrlが存在する場合は直接リダイレクト
+      if (paymentLink?.paymentUrl) {
+        window.location.href = paymentLink.paymentUrl;
+        return;
       }
 
-      if (data.success && data.url) {
-        // Stripe決済ページにリダイレクト
-        window.location.href = data.url;
-      } else {
-        throw new Error(data.error || 'Stripe決済URLの取得に失敗しました');
-      }
+      // paymentUrlが無い場合のエラー処理
+      throw new Error('決済URLが見つかりません');
 
     } catch (error) {
       console.error('Stripe決済エラー:', error);
@@ -98,11 +84,14 @@ export default function PaymentLinkPage() {
   };
 
   const formatAmount = (amount: number, currency: string) => {
+    // JPYの場合はそのまま、その他の通貨は100で割る
+    const displayAmount = currency.toLowerCase() === 'jpy' ? amount : amount / 100;
+
     return new Intl.NumberFormat('ja-JP', {
       style: 'currency',
       currency: currency.toUpperCase(),
       minimumFractionDigits: 0,
-    }).format(amount / 100);
+    }).format(displayAmount);
   };
 
   const formatDate = (dateString: string) => {
@@ -167,7 +156,7 @@ export default function PaymentLinkPage() {
 
   const expired = isExpired(paymentLink.expiresAt);
 
-  if (paymentLink.status !== 'ACTIVE' || expired) {
+  if (!['ACTIVE', 'pending'].includes(paymentLink.status) || expired) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-orange-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-lg shadow-xl border-0">
@@ -280,66 +269,86 @@ export default function PaymentLinkPage() {
                 </div>
               </div>
 
-              {/* 決済方法選択 */}
+              {/* 決済方法 */}
               <div className="space-y-4">
-                <h3 className="font-medium text-gray-900 text-center text-xl">決済方法を選択してください</h3>
+                <h3 className="font-medium text-gray-900 text-center text-xl">お支払いに進む</h3>
 
-                {/* Stripe決済ボタン */}
-                <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-[#635bff] rounded-lg">
-                        <CreditCard className="h-5 w-5 text-white" />
+                {/* Stripe決済 */}
+                {paymentLink.service === 'stripe' && (
+                  <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-[#635bff] rounded-lg">
+                          <CreditCard className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">クレジットカード決済</h4>
+                          <p className="text-sm text-gray-600">Visa、Mastercard、JCB対応</p>
+                        </div>
                       </div>
+                    </div>
+                    <Button
+                      onClick={handleStripePayment}
+                      disabled={processingStripe}
+                      className="w-full bg-[#635bff] hover:bg-[#5a52e8] text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-3"
+                      size="lg"
+                    >
+                      {processingStripe ? (
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      ) : (
+                        <CreditCard className="h-5 w-5" />
+                      )}
+                      <span>
+                        {processingStripe ? '決済ページに移動中...' : 'Stripeで決済する'}
+                      </span>
+                    </Button>
+                  </div>
+                )}
+
+                {/* PayPal決済 */}
+                {paymentLink.service === 'paypal' && (
+                  <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-[#0070ba] rounded-lg">
+                          <Globe className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">PayPal決済</h4>
+                          <p className="text-sm text-gray-600">PayPalアカウントまたはカード</p>
+                        </div>
+                      </div>
+                    </div>
+                    <PayPalButton
+                      paymentLinkId={paymentLink.id}
+                      paymentUrl={paymentLink.paymentUrl}
+                      amount={paymentLink.amount}
+                      currency={paymentLink.currency}
+                      title={paymentLink.title}
+                      onSuccess={(data) => {
+                        console.log('PayPal決済成功:', data);
+                      }}
+                      onError={(error) => {
+                        console.error('PayPal決済エラー:', error);
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* 未対応サービスのエラー表示 */}
+                {paymentLink.service !== 'stripe' && paymentLink.service !== 'paypal' && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle className="h-5 w-5 text-red-600" />
                       <div>
-                        <h4 className="font-medium text-gray-900">クレジットカード決済</h4>
-                        <p className="text-sm text-gray-600">Visa、Mastercard、JCB対応</p>
+                        <h4 className="font-medium text-red-800">対応していない決済サービスです</h4>
+                        <p className="text-sm text-red-600">
+                          この決済リンクは現在対応していないサービス（{paymentLink.service}）で作成されています
+                        </p>
                       </div>
                     </div>
                   </div>
-                  <Button
-                    onClick={handleStripePayment}
-                    disabled={processingStripe}
-                    className="w-full bg-[#635bff] hover:bg-[#5a52e8] text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-3"
-                    size="lg"
-                  >
-                    {processingStripe ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    ) : (
-                      <CreditCard className="h-5 w-5" />
-                    )}
-                    <span>
-                      {processingStripe ? '決済ページに移動中...' : 'Stripeで決済する'}
-                    </span>
-                  </Button>
-                </div>
-
-                {/* PayPal決済ボタン */}
-                <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-[#0070ba] rounded-lg">
-                        <Globe className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">PayPal決済</h4>
-                        <p className="text-sm text-gray-600">PayPalアカウントまたはカード</p>
-                      </div>
-                    </div>
-                  </div>
-                  <PayPalButton
-                    paymentLinkId={paymentLink.id}
-                    amount={paymentLink.amount}
-                    currency={paymentLink.currency}
-                    title={paymentLink.title}
-                    onSuccess={(data) => {
-                      console.log('PayPal決済成功:', data);
-                    }}
-                    onError={(error) => {
-                      console.error('PayPal決済エラー:', error);
-                    }}
-                  />
-                </div>
+                )}
               </div>
 
               {/* セキュリティ情報 */}
