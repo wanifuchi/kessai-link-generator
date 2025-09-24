@@ -103,47 +103,71 @@ export async function POST(request: NextRequest) {
     // const encryptedSecretKey = await encrypt(validatedData.secretKey);
     // const encryptedPublishableKey = validatedData.publishableKey ? await encrypt(validatedData.publishableKey) : null;
 
-    // 同一サービス・環境の組み合わせが既に存在するかチェック
-    const existingSetting = await prisma.apiSettings.findFirst({
-      where: {
-        service: validatedData.service,
-        environment: validatedData.environment,
-        userId: null, // 現在はユーザー機能未実装のためnull
-      }
-    });
+    let existingSetting = null;
+    let apiSetting = null;
 
-    if (existingSetting) {
-      return NextResponse.json({
-        success: false,
-        error: '同じサービス・環境の設定が既に存在します',
-        details: `${validatedData.service} - ${validatedData.environment}`
-      }, { status: 409 });
+    try {
+      // 同一サービス・環境の組み合わせが既に存在するかチェック
+      existingSetting = await prisma.apiSettings.findFirst({
+        where: {
+          service: validatedData.service,
+          environment: validatedData.environment,
+          userId: null, // 現在はユーザー機能未実装のためnull
+        }
+      });
+
+      if (existingSetting) {
+        return NextResponse.json({
+          success: false,
+          error: '同じサービス・環境の設定が既に存在します',
+          details: `${validatedData.service} - ${validatedData.environment}`
+        }, { status: 409 });
+      }
+
+      apiSetting = await prisma.apiSettings.create({
+        data: {
+          service: validatedData.service,
+          environment: validatedData.environment,
+          publishableKey: validatedData.publishableKey, // TODO: 暗号化
+          secretKey: validatedData.secretKey, // TODO: 暗号化
+          webhookUrl: validatedData.webhookUrl,
+          description: validatedData.description,
+          isActive: validatedData.isActive,
+          userId: null, // 現在はユーザー機能未実装
+        },
+        select: {
+          id: true,
+          service: true,
+          environment: true,
+          publishableKey: true,
+          // 秘密キーは返さない
+          webhookUrl: true,
+          description: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        }
+      });
+    } catch (dbError) {
+      console.error('データベース操作エラー:', dbError);
+
+      // データベース接続エラーの場合
+      if (dbError instanceof Error && dbError.message.includes('Environment variable not found: DATABASE_URL')) {
+        console.warn('DATABASE_URLが設定されていません - API設定作成を拒否');
+        return NextResponse.json({
+          success: false,
+          error: 'データベース接続が設定されていません',
+          details: 'DATABASE_URL環境変数を設定してください',
+          debugInfo: {
+            errorMessage: dbError.message,
+            validatedData: { ...validatedData, secretKey: '[MASKED]' }
+          }
+        }, { status: 503 });
+      }
+
+      // その他のデータベースエラー
+      throw dbError;
     }
-
-    const apiSetting = await prisma.apiSettings.create({
-      data: {
-        service: validatedData.service,
-        environment: validatedData.environment,
-        publishableKey: validatedData.publishableKey, // TODO: 暗号化
-        secretKey: validatedData.secretKey, // TODO: 暗号化
-        webhookUrl: validatedData.webhookUrl,
-        description: validatedData.description,
-        isActive: validatedData.isActive,
-        userId: null, // 現在はユーザー機能未実装
-      },
-      select: {
-        id: true,
-        service: true,
-        environment: true,
-        publishableKey: true,
-        // 秘密キーは返さない
-        webhookUrl: true,
-        description: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-      }
-    });
 
     return NextResponse.json({
       success: true,
