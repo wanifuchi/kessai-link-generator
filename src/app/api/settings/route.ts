@@ -18,6 +18,16 @@ const apiSettingsSchema = z.object({
 // GET - API設定一覧取得
 export async function GET(request: NextRequest) {
   try {
+    // DATABASE_URLが未設定の場合は空の設定リストを返す
+    if (!process.env.DATABASE_URL) {
+      console.warn('DATABASE_URLが設定されていません - 空のリストを返します');
+      return NextResponse.json({
+        success: true,
+        data: [],
+        warning: 'データベース接続が設定されていません'
+      });
+    }
+
     const { searchParams } = new URL(request.url);
     const service = searchParams.get('service');
     const environment = searchParams.get('environment');
@@ -50,6 +60,18 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('API設定取得エラー:', error);
+    console.error('DATABASE_URL status:', process.env.DATABASE_URL ? 'SET' : 'NOT_SET');
+
+    // データベース接続エラーの場合は一時的に空のリストを返す
+    if (error instanceof Error && error.message.includes('connect')) {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        warning: 'データベース接続エラー - 空のリストを返します',
+        details: error.message
+      });
+    }
+
     return NextResponse.json({
       success: false,
       error: 'API設定の取得に失敗しました',
@@ -62,6 +84,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let body; // catchブロックでもアクセス可能にする
   try {
+    // DATABASE_URLが未設定の場合はエラーを返す
+    if (!process.env.DATABASE_URL) {
+      console.warn('DATABASE_URLが設定されていません - API設定作成を拒否');
+      return NextResponse.json({
+        success: false,
+        error: 'データベース接続が設定されていません',
+        details: 'DATABASE_URL環境変数を設定してください'
+      }, { status: 503 });
+    }
+
     body = await request.json();
     console.log('API設定作成リクエスト:', body);
 
