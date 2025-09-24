@@ -84,6 +84,28 @@ export default function SettingsPage() {
   };
 
   const handleInputChange = (field: keyof FormData, value: string) => {
+    // リアルタイム汚染チェック
+    const suspiciousPatterns = [
+      /Script was injected/i,
+      /console\./i,
+      /DevTools/i,
+      /page-[a-f0-9]+\.js/i,
+      /Failed to load resource/i,
+      /Download the React/i
+    ];
+
+    const isContaminated = suspiciousPatterns.some(pattern => pattern.test(value));
+
+    if (isContaminated) {
+      toast({
+        title: '警告',
+        description: `${field}フィールドに異常な文字列が検出されました。フィールドをクリアして正しい値を入力してください。`,
+        variant: 'destructive',
+      });
+      // 汚染された値は設定しない
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -101,10 +123,54 @@ export default function SettingsPage() {
     setShowForm(false);
   };
 
+  // フィールドのサニタイズと検証
+  const sanitizeAndValidate = (data: FormData) => {
+    const sanitized = { ...data };
+    const contaminations = [];
+
+    // 異常な文字列パターンを検出
+    const suspiciousPatterns = [
+      /Script was injected/i,
+      /console\./i,
+      /DevTools/i,
+      /page-[a-f0-9]+\.js/i,
+      /Failed to load resource/i,
+      /Download the React/i
+    ];
+
+    // 各フィールドをチェック・サニタイズ
+    Object.keys(sanitized).forEach(key => {
+      const value = sanitized[key as keyof FormData];
+      if (typeof value === 'string') {
+        for (const pattern of suspiciousPatterns) {
+          if (pattern.test(value)) {
+            contaminations.push(`${key}: 異常な文字列を検出`);
+            // 汚染された値をクリア
+            sanitized[key as keyof FormData] = '' as any;
+          }
+        }
+      }
+    });
+
+    return { sanitized, contaminations };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.service || !formData.secretKey) {
+    // 入力データのサニタイズと検証
+    const { sanitized, contaminations } = sanitizeAndValidate(formData);
+
+    if (contaminations.length > 0) {
+      toast({
+        title: '入力エラー',
+        description: `フィールドに異常なデータが検出されました: ${contaminations.join(', ')}。フィールドをクリアして再入力してください。`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!sanitized.service || !sanitized.secretKey) {
       toast({
         title: 'エラー',
         description: 'サービスと秘密キーは必須です',
@@ -119,15 +185,15 @@ export default function SettingsPage() {
       const url = editingId ? `/api/settings/${editingId}` : '/api/settings';
       const method = editingId ? 'PUT' : 'POST';
 
-      console.log('送信データ:', formData);
+      console.log('送信データ:', sanitized);
 
       // 空文字列のoptionalフィールドをundefinedに変換
       const requestData = {
-        ...formData,
-        publishableKey: formData.publishableKey || undefined,
-        webhookUrl: formData.webhookUrl || undefined,
-        description: formData.description || undefined,
-        isActive: formData.isActive ?? true,
+        ...sanitized,
+        publishableKey: sanitized.publishableKey || undefined,
+        webhookUrl: sanitized.webhookUrl || undefined,
+        description: sanitized.description || undefined,
+        isActive: sanitized.isActive ?? true,
       };
 
       console.log('実際の送信データ:', requestData);
