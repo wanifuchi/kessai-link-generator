@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { requireAuth } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -15,7 +16,7 @@ const apiSettingsSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-// GET - API設定一覧取得
+// GET - API設定一覧取得（ユーザー固有）
 export async function GET(request: NextRequest) {
   try {
     // DATABASE_URLが未設定の場合は空の設定リストを返す
@@ -28,11 +29,20 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // 認証確認
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    const { user } = authResult;
+
     const { searchParams } = new URL(request.url);
     const service = searchParams.get('service');
     const environment = searchParams.get('environment');
 
-    const where: any = {};
+    const where: any = {
+      userId: user.stackUserId, // ユーザー固有のデータのみ取得
+    };
     if (service) where.service = service.toLowerCase();
     if (environment) where.environment = environment.toLowerCase();
 
@@ -50,12 +60,17 @@ export async function GET(request: NextRequest) {
         isActive: true,
         createdAt: true,
         updatedAt: true,
+        userId: true,
       }
     });
 
     return NextResponse.json({
       success: true,
-      data: settings
+      data: settings,
+      user: {
+        id: user.stackUserId,
+        email: user.email
+      }
     });
 
   } catch (error) {
@@ -87,7 +102,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - 新しいAPI設定作成
+// POST - 新しいAPI設定作成（ユーザー固有）
 export async function POST(request: NextRequest) {
   let body; // catchブロックでもアクセス可能にする
   try {
@@ -100,6 +115,13 @@ export async function POST(request: NextRequest) {
         details: 'DATABASE_URL環境変数を設定してください'
       }, { status: 503 });
     }
+
+    // 認証確認
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    const { user } = authResult;
 
     body = await request.json();
     console.log('API設定作成リクエスト:', body);
@@ -114,12 +136,12 @@ export async function POST(request: NextRequest) {
     let apiSetting = null;
 
     try {
-      // 同一サービス・環境の組み合わせが既に存在するかチェック
+      // 同じユーザーで同一サービス・環境の組み合わせが既に存在するかチェック
       existingSetting = await prisma.apiSettings.findFirst({
         where: {
           service: validatedData.service,
           environment: validatedData.environment,
-          userId: null, // 現在はユーザー機能未実装のためnull
+          userId: user.stackUserId, // ユーザー固有の重複チェック
         }
       });
 
@@ -140,7 +162,7 @@ export async function POST(request: NextRequest) {
           webhookUrl: validatedData.webhookUrl,
           description: validatedData.description,
           isActive: validatedData.isActive,
-          userId: null, // 現在はユーザー機能未実装
+          userId: user.stackUserId, // 認証ユーザーIDを設定
         },
         select: {
           id: true,
@@ -153,6 +175,7 @@ export async function POST(request: NextRequest) {
           isActive: true,
           createdAt: true,
           updatedAt: true,
+          userId: true,
         }
       });
     } catch (dbError) {

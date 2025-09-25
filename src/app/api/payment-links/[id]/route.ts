@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { requireAuth, verifyOwnership, createOwnershipError } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -18,13 +19,20 @@ const updatePaymentLinkSchema = z.object({
   metadata: z.record(z.any()).optional(),
 });
 
-// GET - 個別の決済リンク取得
+// GET - 個別の決済リンク取得（所有者確認付き）
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
+    // 認証確認
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    const { user } = authResult;
+
     const paymentLink = await prisma.paymentLink.findUnique({
       where: { id },
       include: {
@@ -33,14 +41,20 @@ export async function GET(
         }
       }
     });
-    
+
     if (!paymentLink) {
       return NextResponse.json({
         success: false,
-        error: '決済リンクが見つかりません'
+        error: '決済リンクが見つかりません',
+        code: 'NOT_FOUND'
       }, { status: 404 });
     }
-    
+
+    // 所有者確認
+    if (!verifyOwnership(user.stackUserId, paymentLink.userId)) {
+      return createOwnershipError();
+    }
+
     return NextResponse.json({
       success: true,
       data: paymentLink
@@ -56,26 +70,49 @@ export async function GET(
   }
 }
 
-// PUT - 決済リンク更新
+// PUT - 決済リンク更新（所有者確認付き）
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
+    // 認証確認
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    const { user } = authResult;
+
     const body = await request.json();
+    console.log('決済リンク更新リクエスト:', { id, ...body });
     const validatedData = updatePaymentLinkSchema.parse(body);
-    
-    // 存在確認
+
+    // 存在と所有者確認
     const existingPaymentLink = await prisma.paymentLink.findUnique({
-      where: { id }
+      where: { id },
+      select: { id: true, userId: true, status: true }
     });
-    
+
     if (!existingPaymentLink) {
       return NextResponse.json({
         success: false,
-        error: '決済リンクが見つかりません'
+        error: '決済リンクが見つかりません',
+        code: 'NOT_FOUND'
       }, { status: 404 });
+    }
+
+    if (!verifyOwnership(user.stackUserId, existingPaymentLink.userId)) {
+      return createOwnershipError();
+    }
+
+    // 完了済みの決済リンクは更新不可
+    if (existingPaymentLink.status === 'completed') {
+      return NextResponse.json({
+        success: false,
+        error: '完了済みの決済リンクは更新できません',
+        code: 'CANNOT_UPDATE_COMPLETED'
+      }, { status: 400 });
     }
     
     const updatedPaymentLink = await prisma.paymentLink.update({
@@ -111,25 +148,58 @@ export async function PUT(
   }
 }
 
-// DELETE - 決済リンク削除
+// DELETE - 決済リンク削除（所有者確認付き）
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
-    // 存在確認
+    // 認証確認
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    const { user } = authResult;
+
+    // 存在と所有者確認
     const existingPaymentLink = await prisma.paymentLink.findUnique({
-      where: { id }
+      where: { id },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        transactions: {
+          select: { id: true, status: true }
+        }
+      }
     });
-    
+
     if (!existingPaymentLink) {
       return NextResponse.json({
         success: false,
-        error: '決済リンクが見つかりません'
+        error: '決済リンクが見つかりません',
+        code: 'NOT_FOUND'
       }, { status: 404 });
     }
-    
+
+    if (!verifyOwnership(user.stackUserId, existingPaymentLink.userId)) {
+      return createOwnershipError();
+    }
+
+    // 完了済みの取引がある場合は削除不可
+    const completedTransactions = existingPaymentLink.transactions.filter(
+      t => t.status === 'completed'
+    );
+
+    if (completedTransactions.length > 0) {
+      return NextResponse.json({
+        success: false,
+        error: '完了済みの取引がある決済リンクは削除できません',
+        code: 'CANNOT_DELETE_WITH_COMPLETED_TRANSACTIONS'
+      }, { status: 400 });
+    }
+
     // 関連するトランザクションも削除
     await prisma.$transaction([
       prisma.transaction.deleteMany({

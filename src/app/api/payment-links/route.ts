@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { requireAuth } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -25,18 +26,27 @@ const createPaymentLinkSchema = z.object({
 
 const updatePaymentLinkSchema = createPaymentLinkSchema.partial();
 
-// GET - 決済リンク一覧取得
+// GET - 決済リンク一覧取得（ユーザー固有）
 export async function GET(request: NextRequest) {
   try {
+    // 認証確認
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    const { user } = authResult;
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const service = searchParams.get('service');
     const status = searchParams.get('status');
-    
+
     const skip = (page - 1) * limit;
-    
-    const where: any = {};
+
+    const where: any = {
+      userId: user.stackUserId, // ユーザー固有のデータのみ取得
+    };
     if (service) where.service = service.toLowerCase();
     if (status) where.status = status.toLowerCase();
     
@@ -70,6 +80,10 @@ export async function GET(request: NextRequest) {
           total,
           totalPages: Math.ceil(total / limit),
         }
+      },
+      user: {
+        id: user.stackUserId,
+        email: user.email
       }
     });
     
@@ -83,19 +97,27 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - 新しい決済リンク作成
+// POST - 新しい決済リンク作成（ユーザー固有）
 export async function POST(request: NextRequest) {
   try {
+    // 認証確認
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    const { user } = authResult;
+
     const body = await request.json();
-    console.log('受信データ:', body);
+    console.log('決済リンク作成リクエスト:', body);
     const validatedData = createPaymentLinkSchema.parse(body);
-    
+
     const paymentLink = await prisma.paymentLink.create({
       data: {
         ...validatedData,
         service: validatedData.service as any,
         expiresAt: validatedData.expiresAt ? new Date(validatedData.expiresAt) : null,
         status: 'pending',
+        userId: user.stackUserId, // 認証ユーザーIDを設定
       },
     });
     

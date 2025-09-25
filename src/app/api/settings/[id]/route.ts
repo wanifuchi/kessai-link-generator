@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { requireAuth, verifyOwnership, createOwnershipError } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -13,13 +14,20 @@ const updateApiSettingsSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-// GET - 特定のAPI設定取得
+// GET - 特定のAPI設定取得（所有者確認付き）
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const params = await context.params;
   try {
+    // 認証確認
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    const { user } = authResult;
+
     const setting = await prisma.apiSettings.findUnique({
       where: { id: params.id },
       select: {
@@ -33,14 +41,21 @@ export async function GET(
         isActive: true,
         createdAt: true,
         updatedAt: true,
+        userId: true,
       }
     });
 
     if (!setting) {
       return NextResponse.json({
         success: false,
-        error: 'API設定が見つかりません'
+        error: 'API設定が見つかりません',
+        code: 'NOT_FOUND'
       }, { status: 404 });
+    }
+
+    // 所有者確認
+    if (!verifyOwnership(user.stackUserId, setting.userId)) {
+      return createOwnershipError();
     }
 
     return NextResponse.json({
@@ -58,28 +73,41 @@ export async function GET(
   }
 }
 
-// PUT - API設定更新
+// PUT - API設定更新（所有者確認付き）
 export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const params = await context.params;
   try {
+    // 認証確認
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    const { user } = authResult;
+
     const body = await request.json();
     console.log('API設定更新リクエスト:', { id: params.id, ...body });
 
     const validatedData = updateApiSettingsSchema.parse(body);
 
-    // 設定が存在するかチェック
+    // 設定の存在と所有者確認
     const existingSetting = await prisma.apiSettings.findUnique({
-      where: { id: params.id }
+      where: { id: params.id },
+      select: { id: true, userId: true }
     });
 
     if (!existingSetting) {
       return NextResponse.json({
         success: false,
-        error: 'API設定が見つかりません'
+        error: 'API設定が見つかりません',
+        code: 'NOT_FOUND'
       }, { status: 404 });
+    }
+
+    if (!verifyOwnership(user.stackUserId, existingSetting.userId)) {
+      return createOwnershipError();
     }
 
     // TODO: 実際の暗号化実装
@@ -132,23 +160,36 @@ export async function PUT(
   }
 }
 
-// DELETE - API設定削除
+// DELETE - API設定削除（所有者確認付き）
 export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const params = await context.params;
   try {
-    // 設定が存在するかチェック
+    // 認証確認
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    const { user } = authResult;
+
+    // 設定の存在と所有者確認
     const existingSetting = await prisma.apiSettings.findUnique({
-      where: { id: params.id }
+      where: { id: params.id },
+      select: { id: true, userId: true }
     });
 
     if (!existingSetting) {
       return NextResponse.json({
         success: false,
-        error: 'API設定が見つかりません'
+        error: 'API設定が見つかりません',
+        code: 'NOT_FOUND'
       }, { status: 404 });
+    }
+
+    if (!verifyOwnership(user.stackUserId, existingSetting.userId)) {
+      return createOwnershipError();
     }
 
     await prisma.apiSettings.delete({

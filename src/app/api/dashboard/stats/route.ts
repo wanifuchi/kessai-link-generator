@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { requireAuth } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -57,6 +58,13 @@ interface DashboardStats {
 
 export async function GET(request: NextRequest) {
   try {
+    // 認証確認
+    const authResult = await requireAuth(request);
+    if ('error' in authResult) {
+      return authResult.error;
+    }
+    const { user } = authResult;
+
     const { searchParams } = new URL(request.url);
     const dateRange = searchParams.get('range') || '30'; // デフォルト30日
     const daysAgo = parseInt(dateRange);
@@ -66,6 +74,9 @@ export async function GET(request: NextRequest) {
     // 前期間の開始日（比較用）
     const prevStartDate = new Date(startDate);
     prevStartDate.setDate(prevStartDate.getDate() - daysAgo);
+
+    // ユーザー固有のフィルタ条件
+    const userFilter = { userId: user.stackUserId };
 
     // 基本統計を並列で取得
     const [
@@ -81,21 +92,25 @@ export async function GET(request: NextRequest) {
       serviceStats,
       currencyStats
     ] = await Promise.all([
-      // 期間内の総決済リンク数
+      // 期間内の総決済リンク数（ユーザー固有）
       prisma.paymentLink.count({
         where: {
+          ...userFilter,
           createdAt: {
             gte: startDate
           }
         }
       }),
 
-      // 全ての決済リンク数
-      prisma.paymentLink.count(),
+      // 全ての決済リンク数（ユーザー固有）
+      prisma.paymentLink.count({
+        where: userFilter
+      }),
 
-      // 期間内の決済リンク詳細（収益計算用）
+      // 期間内の決済リンク詳細（収益計算用）（ユーザー固有）
       prisma.paymentLink.findMany({
         where: {
+          ...userFilter,
           createdAt: {
             gte: startDate
           }
@@ -109,8 +124,9 @@ export async function GET(request: NextRequest) {
         }
       }),
 
-      // 全ての決済リンク（トップパフォーマンス計算用）
+      // 全ての決済リンク（トップパフォーマンス計算用）（ユーザー固有）
       prisma.paymentLink.findMany({
+        where: userFilter,
         include: {
           transactions: {
             where: {
@@ -123,40 +139,44 @@ export async function GET(request: NextRequest) {
         }
       }),
 
-      // 期間内の全取引
+      // 期間内の全取引（ユーザー固有）
       prisma.transaction.findMany({
         where: {
           createdAt: {
             gte: startDate
-          }
+          },
+          paymentLink: userFilter
         },
         include: {
           paymentLink: true
         }
       }),
 
-      // 全取引（状態統計用）
+      // 全取引（状態統計用）（ユーザー固有）
       prisma.transaction.findMany({
         where: {
           createdAt: {
             gte: startDate
-          }
+          },
+          paymentLink: userFilter
         }
       }),
 
-      // 前期間の取引（成長率計算用）
+      // 前期間の取引（成長率計算用）（ユーザー固有）
       prisma.transaction.findMany({
         where: {
           createdAt: {
             gte: prevStartDate,
             lt: startDate
-          }
+          },
+          paymentLink: userFilter
         }
       }),
 
-      // 前期間のリンク（成長率計算用）
+      // 前期間のリンク（成長率計算用）（ユーザー固有）
       prisma.paymentLink.count({
         where: {
+          ...userFilter,
           createdAt: {
             gte: prevStartDate,
             lt: startDate
@@ -164,8 +184,9 @@ export async function GET(request: NextRequest) {
         }
       }),
 
-      // 最近の決済リンク
+      // 最近の決済リンク（ユーザー固有）
       prisma.paymentLink.findMany({
+        where: userFilter,
         take: 10,
         orderBy: {
           createdAt: 'desc'
@@ -175,14 +196,15 @@ export async function GET(request: NextRequest) {
         }
       }),
 
-      // サービス別統計
+      // サービス別統計（ユーザー固有）
       prisma.transaction.groupBy({
         by: ['service'],
         where: {
           status: 'completed',
           paidAt: {
             gte: startDate
-          }
+          },
+          paymentLink: userFilter
         },
         _count: {
           _all: true
@@ -192,14 +214,15 @@ export async function GET(request: NextRequest) {
         }
       }),
 
-      // 通貨別統計
+      // 通貨別統計（ユーザー固有）
       prisma.transaction.groupBy({
         by: ['currency'],
         where: {
           status: 'completed',
           paidAt: {
             gte: startDate
-          }
+          },
+          paymentLink: userFilter
         },
         _count: {
           _all: true
@@ -291,7 +314,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: stats
+      data: stats,
+      user: {
+        id: user.stackUserId,
+        email: user.email
+      }
     });
 
   } catch (error) {
