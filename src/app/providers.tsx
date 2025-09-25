@@ -12,13 +12,23 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // クライアントサイドでのみStack Authを初期化
     try {
+      console.log('🔧 Stack Auth環境変数チェック:', {
+        projectId: process.env.NEXT_PUBLIC_STACK_PROJECT_ID?.slice(0, 8) + '...',
+        publishableKey: process.env.NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY?.slice(0, 8) + '...',
+        hasEnv: hasStackEnv()
+      })
+
       if (hasStackEnv()) {
+        console.log('🔧 Stack Appクライアント初期化中...')
         const app = getStackClientApp()
         setStackApp(app)
         setHasStack(true)
+        console.log('🔧 Stack Appクライアント初期化成功')
+      } else {
+        console.warn('🔧 Stack Auth環境変数が不足しています')
       }
     } catch (error) {
-      console.warn('Stack Auth設定エラー:', error)
+      console.error('🔧 Stack Auth設定エラー:', error)
       setHasStack(false)
     }
     setMounted(true)

@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 // SSRを無効化
 export const dynamic = 'force-dynamic'
 
-export default function SignUpPage() {
+export default function ForgotPasswordPage() {
   const [mounted, setMounted] = useState(false)
 
   // クライアントサイドでのみ実行
@@ -25,12 +25,11 @@ export default function SignUpPage() {
     )
   }
 
-  return <SignUpForm />
+  return <ForgotPasswordForm />
 }
 
-function SignUpForm() {
+function ForgotPasswordForm() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [info, setInfo] = useState('')
@@ -48,59 +47,39 @@ function SignUpForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
-    if (password.length < 8) {
-      setError('パスワードは8文字以上で設定してください')
-      return
-    }
-
     setIsLoading(true)
 
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : ''
-      console.log('🔥 サインアップ開始:', { email, origin })
+      console.log('🔥 パスワードリセット開始:', { email, origin })
 
-      const result = await app.signUpWithCredential({
+      const result = await app.sendForgotPasswordEmail({
         email,
-        password,
-        noRedirect: true,
-        verificationCallbackUrl: `${origin}/auth/email-verified`,
+        redirectUrl: `${origin}/auth/reset-password`,
       })
 
-      console.log('🔥 サインアップ結果:', result)
+      console.log('🔥 パスワードリセット結果:', result)
 
       if (result.status === 'ok') {
-        setInfo('確認メールを送信しました。メール内のリンクをクリックして認証を完了してください。')
+        setInfo('パスワードリセット用のメールを送信しました。メール内のリンクをクリックしてパスワードをリセットしてください。')
       } else {
-        console.error('🔥 サインアップエラー:', result.error)
-        const errorMessage = result.error?.message || '登録に失敗しました'
+        console.error('🔥 パスワードリセットエラー:', result.error)
+        const errorMessage = result.error?.message || 'メール送信に失敗しました'
         console.log('🔥 エラーメッセージ:', errorMessage)
 
-        if (errorMessage.includes('already exists') || errorMessage.includes('存在')) {
-          setError('このメールアドレスは既に登録されています')
+        if (errorMessage.includes('not found') || errorMessage.includes('見つかりません')) {
+          setError('このメールアドレスは登録されていません')
         } else if (errorMessage.includes('invalid') || errorMessage.includes('email')) {
           setError('有効なメールアドレスを入力してください')
         } else {
-          setError(`登録に失敗しました: ${errorMessage}`)
+          setError(`メール送信に失敗しました: ${errorMessage}`)
         }
       }
     } catch (err: any) {
-      console.error('🔥 サインアップ例外:', err)
+      console.error('🔥 パスワードリセット例外:', err)
       setError(`エラーが発生しました: ${err.message || 'Unknown error'}`)
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const handleOAuthSignUp = async () => {
-    setError('')
-    setIsLoading(true)
-
-    try {
-      await app.signInWithOAuth('google')
-    } catch (err: any) {
-      setIsLoading(false)
-      setError('Googleログインに失敗しました')
     }
   }
 
@@ -110,10 +89,10 @@ function SignUpForm() {
         <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-white/20 shadow-xl px-5 py-4">
           <div className="text-center mb-4">
             <h1 className="text-lg font-medium text-slate-800">
-              アカウント作成
+              パスワードリセット
             </h1>
             <p className="text-sm text-slate-600 mt-1">
-              決済リンクサービスを始める
+              登録したメールアドレスを入力してください
             </p>
           </div>
 
@@ -134,32 +113,9 @@ function SignUpForm() {
               />
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-xs font-medium text-slate-600 mb-1.5">
-                パスワード
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/50"
-                placeholder="8文字以上"
-                disabled={isLoading}
-              />
-            </div>
-
             {(error || info) && (
               <div className={`p-2.5 rounded-lg text-xs ${info ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
                 {error || info}
-                {error.includes('既に登録されています') && (
-                  <div className="mt-1.5">
-                    <Link href="/auth/signin" className="underline font-medium">
-                      ログインページへ
-                    </Link>
-                  </div>
-                )}
               </div>
             )}
 
@@ -168,34 +124,22 @@ function SignUpForm() {
               disabled={isLoading}
               className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
             >
-              {isLoading ? '登録中...' : 'アカウント作成'}
+              {isLoading ? 'メール送信中...' : 'パスワードリセットメールを送信'}
             </button>
           </form>
 
-          <div className="mt-4">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200"></div>
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="px-2 bg-white text-slate-400">または</span>
-              </div>
+          <div className="mt-4 text-center text-xs text-slate-500 space-y-2">
+            <div>
+              <Link href="/auth/signin" className="text-blue-600 hover:text-blue-700 font-medium">
+                ログインページに戻る
+              </Link>
             </div>
-
-            <button
-              onClick={handleOAuthSignUp}
-              disabled={isLoading}
-              className="w-full mt-3 py-2.5 px-4 border border-slate-200 rounded-lg bg-white/70 text-slate-700 text-sm font-medium hover:bg-white hover:border-slate-300 disabled:opacity-50 transition-all duration-200 shadow-sm"
-            >
-              Googleで登録
-            </button>
-          </div>
-
-          <div className="mt-4 text-center text-xs text-slate-500">
-            既にアカウントをお持ちの方は{' '}
-            <Link href="/auth/signin" className="text-blue-600 hover:text-blue-700 font-medium">
-              ログイン
-            </Link>
+            <div>
+              アカウントをお持ちでない方は{' '}
+              <Link href="/auth/signup" className="text-blue-600 hover:text-blue-700 font-medium">
+                新規登録
+              </Link>
+            </div>
           </div>
         </div>
       </div>
