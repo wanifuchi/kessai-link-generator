@@ -1,22 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStackServerApp } from '@/lib/stack'
+import jwt from 'jsonwebtoken'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // 認証が必要なルート: /dashboard, /create, /settings
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/create') || pathname.startsWith('/settings')) {
+  // 認証が必要なルート: /dashboard, /create, /settings, /profile
+  if (
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/create') ||
+    pathname.startsWith('/settings') ||
+    pathname.startsWith('/profile')
+  ) {
     try {
-      const app = getStackServerApp()
-      const user = await app.getUser()
+      // Cookieからトークンを取得
+      const token = request.cookies.get('auth-token')?.value
 
-      if (!user) {
-        // 認証されていない場合は、ログインページにリダイレクト
+      if (!token) {
+        // トークンがない場合はサインインページにリダイレクト
         return NextResponse.redirect(new URL('/auth/signin', request.url))
       }
+
+      // JWTを検証
+      const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this'
+      const decoded = jwt.verify(token, JWT_SECRET) as any
+
+      if (!decoded || !decoded.id) {
+        // 無効なトークンの場合はサインインページにリダイレクト
+        return NextResponse.redirect(new URL('/auth/signin', request.url))
+      }
+
+      // 有効なトークンの場合は処理を続行
     } catch (error) {
-      // Stack Auth未設定の場合はスキップ（開発時など）
-      console.warn('Stack Auth not configured, skipping auth check:', error)
+      // JWTの検証に失敗した場合はサインインページにリダイレクト
+      console.warn('JWT verification failed:', error)
+      return NextResponse.redirect(new URL('/auth/signin', request.url))
     }
   }
 
