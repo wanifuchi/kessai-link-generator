@@ -19,26 +19,58 @@ export function getStackClientApp() {
   const projectId = process.env.NEXT_PUBLIC_STACK_PROJECT_ID;
   const publishableClientKey = process.env.NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY;
 
+  console.log('🔍 getStackClientApp 詳細チェック:', {
+    projectIdRaw: projectId,
+    publishableKeyRaw: publishableClientKey,
+    projectIdType: typeof projectId,
+    publishableKeyType: typeof publishableClientKey,
+    projectIdTrimmed: projectId?.trim(),
+    publishableKeyTrimmed: publishableClientKey?.trim(),
+  });
+
   if (!projectId || !publishableClientKey) {
     throw new Error(
       "Stack Auth クライアント環境変数が未設定です。NEXT_PUBLIC_STACK_PROJECT_ID / NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY を設定してください。"
     );
   }
 
+  // 環境変数をトリミングして使用
+  const cleanProjectId = projectId.trim();
+  const cleanPublishableClientKey = publishableClientKey.trim();
+
+  console.log('🔍 StackClientApp設定:', {
+    projectId: cleanProjectId,
+    publishableClientKey: cleanPublishableClientKey,
+    tokenStore: "nextjs-cookie"
+  });
+
   return new StackClientApp({
-    projectId,
-    publishableClientKey,
-    tokenStore: "cookie",
+    projectId: cleanProjectId,
+    publishableClientKey: cleanPublishableClientKey,
+    tokenStore: "nextjs-cookie",
   });
 }
 
 export function getStackServerApp() {
   const { projectId, publishableClientKey, secretServerKey } = ensureEnv();
+
+  // サーバー側でも環境変数をクリーンアップ
+  const cleanProjectId = projectId.trim();
+  const cleanPublishableClientKey = publishableClientKey.trim();
+  const cleanSecretServerKey = secretServerKey.trim();
+
+  console.log('🔍 StackServerApp設定:', {
+    projectId: cleanProjectId,
+    publishableClientKey: cleanPublishableClientKey,
+    secretServerKey: cleanSecretServerKey.slice(0, 8) + '...',
+    tokenStore: "nextjs-cookie"
+  });
+
   return new StackServerApp({
-    projectId,
-    publishableClientKey,
-    secretServerKey,
-    tokenStore: "cookie",
+    projectId: cleanProjectId,
+    publishableClientKey: cleanPublishableClientKey,
+    secretServerKey: cleanSecretServerKey,
+    tokenStore: "nextjs-cookie",
   });
 }
 

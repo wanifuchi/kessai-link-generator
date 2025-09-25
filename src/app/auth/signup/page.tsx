@@ -58,13 +58,27 @@ function SignUpForm() {
 
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : ''
-      console.log('🔥 サインアップ開始:', { email, origin })
+      console.log('🔥 サインアップ開始（デバッグ強化版）:', {
+        email,
+        origin,
+        app: app,
+        appType: typeof app,
+        signUpWithCredential: typeof app.signUpWithCredential
+      })
+
+      console.log('🔍 App詳細:', {
+        constructor: app.constructor.name,
+        properties: Object.getOwnPropertyNames(app),
+        methods: Object.getOwnPropertyNames(Object.getPrototypeOf(app))
+      })
 
       // より基本的なサインアップ設定に変更
+      console.log('🚀 signUpWithCredential呼び出し直前...')
       const result = await app.signUpWithCredential({
-        email,
-        password,
+        email: email.trim(),
+        password: password,
       })
+      console.log('✅ signUpWithCredential正常完了')
 
       console.log('🔥 サインアップ結果:', result)
 
@@ -84,7 +98,13 @@ function SignUpForm() {
         }
       }
     } catch (err: any) {
-      console.error('🔥 サインアップ例外:', err)
+      console.error('🔥 サインアップ例外（詳細）:', {
+        error: err,
+        message: err.message,
+        stack: err.stack,
+        name: err.name,
+        cause: err.cause
+      })
       setError(`エラーが発生しました: ${err.message || 'Unknown error'}`)
     } finally {
       setIsLoading(false)
