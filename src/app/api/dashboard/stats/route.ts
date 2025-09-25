@@ -319,7 +319,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: stats,
       user: {
-        id: user.stackUserId,
+        id: user.id,
         email: user.email
       }
     });
