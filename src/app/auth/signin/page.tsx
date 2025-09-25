@@ -9,13 +9,7 @@ import { useRouter } from 'next/navigation'
 export const dynamic = 'force-dynamic'
 
 export default function SignInPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
-
-  const router = useRouter()
 
   // クライアントサイドでのみ実行
   useEffect(() => {
@@ -31,12 +25,18 @@ export default function SignInPage() {
     )
   }
 
-  return <SignInForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} error={error} setError={setError} isLoading={isLoading} setIsLoading={setIsLoading} router={router} />
+  return <SignInForm />
 }
 
-function SignInForm({ email, setEmail, password, setPassword, error, setError, isLoading, setIsLoading, router }: any) {
+function SignInForm() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
   const app = useStackApp()
   const user = useUser()
+  const router = useRouter()
 
   // 既にログイン済みの場合はダッシュボードへリダイレクト
   if (user) {
