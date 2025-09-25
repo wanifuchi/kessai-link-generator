@@ -9,13 +9,34 @@ import { useRouter } from 'next/navigation'
 export const dynamic = 'force-dynamic'
 
 export default function SignInPage() {
-  const app = useStackApp()
-  const user = useUser()
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  const router = useRouter()
+
+  // クライアントサイドでのみ実行
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // SSR時は何も表示しない
+  if (!mounted) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </main>
+    )
+  }
+
+  return <SignInForm email={email} setEmail={setEmail} password={password} setPassword={setPassword} error={error} setError={setError} isLoading={isLoading} setIsLoading={setIsLoading} router={router} />
+}
+
+function SignInForm({ email, setEmail, password, setPassword, error, setError, isLoading, setIsLoading, router }: any) {
+  const app = useStackApp()
+  const user = useUser()
 
   // 既にログイン済みの場合はダッシュボードへリダイレクト
   if (user) {
