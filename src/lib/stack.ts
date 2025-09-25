@@ -28,13 +28,7 @@ export function getStackClientApp() {
   return new StackClientApp({
     projectId,
     publishableClientKey,
-    tokenStore: "nextjs-cookie",
-    urls: {
-      afterSignIn: "/dashboard",
-      afterSignUp: "/dashboard",
-      afterSignOut: "/",
-      emailVerification: "/auth/email-verified",
-    },
+    tokenStore: "cookie",
   });
 }
 
@@ -44,13 +38,7 @@ export function getStackServerApp() {
     projectId,
     publishableClientKey,
     secretServerKey,
-    tokenStore: "nextjs-cookie",
-    urls: {
-      afterSignIn: "/dashboard",
-      afterSignUp: "/dashboard",
-      afterSignOut: "/",
-      emailVerification: "/auth/email-verified",
-    },
+    tokenStore: "cookie",
   });
 }
 

@@ -123,12 +123,9 @@ function SignInForm() {
                 <label htmlFor="password" className="block text-xs font-medium text-slate-600">
                   パスワード
                 </label>
-                <Link
-                  href="/auth/forgot-password"
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  パスワードを忘れた？
-                </Link>
+                <span className="text-xs text-gray-400 cursor-not-allowed">
+                  パスワードを忘れた？（準備中）
+                </span>
               </div>
               <input
                 id="password"

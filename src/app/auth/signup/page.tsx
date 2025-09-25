@@ -60,11 +60,10 @@ function SignUpForm() {
       const origin = typeof window !== 'undefined' ? window.location.origin : ''
       console.log('🔥 サインアップ開始:', { email, origin })
 
+      // より基本的なサインアップ設定に変更
       const result = await app.signUpWithCredential({
         email,
         password,
-        noRedirect: true,
-        verificationCallbackUrl: `${origin}/auth/email-verified`,
       })
 
       console.log('🔥 サインアップ結果:', result)
