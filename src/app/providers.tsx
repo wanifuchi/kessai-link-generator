@@ -10,16 +10,16 @@ function setupFetchInterceptor() {
     const originalFetch = window.fetch;
     window.fetchIntercepted = true;
 
-    window.fetch = async function(...args: any[]) {
+    window.fetch = async function(input: RequestInfo | URL, init?: RequestInit) {
       console.log('🕵️ Fetch Intercepted:', {
-        url: args[0],
-        method: args[1]?.method || 'GET',
-        headers: args[1]?.headers || {},
-        body: args[1]?.body || null
+        url: input,
+        method: init?.method || 'GET',
+        headers: init?.headers || {},
+        body: init?.body || null
       });
 
       try {
-        const response = await originalFetch.apply(this, args);
+        const response = await originalFetch(input, init);
         console.log('✅ Fetch Success:', response.status, response.statusText);
         return response;
       } catch (error) {
