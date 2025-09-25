@@ -3,6 +3,9 @@ import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { requireAuth } from '@/lib/auth';
 
+// Dynamic server usage for authentication
+export const dynamic = 'force-dynamic';
+
 const prisma = new PrismaClient();
 
 // API設定のバリデーションスキーマ
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
     const environment = searchParams.get('environment');
 
     const where: any = {
-      userId: user.stackUserId, // ユーザー固有のデータのみ取得
+      userId: user.id, // ユーザー固有のデータのみ取得
     };
     if (service) where.service = service.toLowerCase();
     if (environment) where.environment = environment.toLowerCase();
@@ -68,7 +71,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: settings,
       user: {
-        id: user.stackUserId,
+        id: user.id,
         email: user.email
       }
     });
@@ -141,7 +144,7 @@ export async function POST(request: NextRequest) {
         where: {
           service: validatedData.service,
           environment: validatedData.environment,
-          userId: user.stackUserId, // ユーザー固有の重複チェック
+          userId: user.id, // ユーザー固有の重複チェック
         }
       });
 
@@ -162,7 +165,7 @@ export async function POST(request: NextRequest) {
           webhookUrl: validatedData.webhookUrl,
           description: validatedData.description,
           isActive: validatedData.isActive,
-          userId: user.stackUserId, // 認証ユーザーIDを設定
+          userId: user.id, // 認証ユーザーIDを設定
         },
         select: {
           id: true,

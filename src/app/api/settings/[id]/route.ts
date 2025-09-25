@@ -3,6 +3,9 @@ import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { requireAuth, verifyOwnership, createOwnershipError } from '@/lib/auth';
 
+// Dynamic server usage for authentication
+export const dynamic = 'force-dynamic';
+
 const prisma = new PrismaClient();
 
 // API設定更新のバリデーションスキーマ
@@ -54,7 +57,7 @@ export async function GET(
     }
 
     // 所有者確認
-    if (!verifyOwnership(user.stackUserId, setting.userId)) {
+    if (!verifyOwnership(user.id, setting.userId)) {
       return createOwnershipError();
     }
 
@@ -106,7 +109,7 @@ export async function PUT(
       }, { status: 404 });
     }
 
-    if (!verifyOwnership(user.stackUserId, existingSetting.userId)) {
+    if (!verifyOwnership(user.id, existingSetting.userId)) {
       return createOwnershipError();
     }
 
@@ -188,7 +191,7 @@ export async function DELETE(
       }, { status: 404 });
     }
 
-    if (!verifyOwnership(user.stackUserId, existingSetting.userId)) {
+    if (!verifyOwnership(user.id, existingSetting.userId)) {
       return createOwnershipError();
     }
 

@@ -3,6 +3,9 @@ import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { requireAuth } from '@/lib/auth';
 
+// Dynamic server usage for authentication
+export const dynamic = 'force-dynamic';
+
 const prisma = new PrismaClient();
 
 // リクエストバリデーション
@@ -45,7 +48,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     const where: any = {
-      userId: user.stackUserId, // ユーザー固有のデータのみ取得
+      userId: user.id, // ユーザー固有のデータのみ取得
     };
     if (service) where.service = service.toLowerCase();
     if (status) where.status = status.toLowerCase();
@@ -82,7 +85,7 @@ export async function GET(request: NextRequest) {
         }
       },
       user: {
-        id: user.stackUserId,
+        id: user.id,
         email: user.email
       }
     });
@@ -117,7 +120,7 @@ export async function POST(request: NextRequest) {
         service: validatedData.service as any,
         expiresAt: validatedData.expiresAt ? new Date(validatedData.expiresAt) : null,
         status: 'pending',
-        userId: user.stackUserId, // 認証ユーザーIDを設定
+        userId: user.id, // 認証ユーザーIDを設定
       },
     });
     

@@ -1,96 +1,130 @@
-import { NextRequest } from 'next/server';
-import { getStackServerApp } from '@/lib/stack';
+import { NextRequest, NextResponse } from 'next/server'
+import { PrismaClient } from '@prisma/client'
+import { cookies } from 'next/headers'
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
+
+const prisma = new PrismaClient()
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this'
 
 export interface AuthenticatedUser {
-  id: string;
-  stackUserId: string;
-  email: string;
-  displayName?: string;
+  id: string
+  email: string
+  name?: string
 }
 
-/**
- * APIエンドポイントで認証ユーザー情報を取得する
- * @param request Next.js Request オブジェクト
- * @returns 認証ユーザー情報またはnull
- */
-export async function getAuthenticatedUser(request?: NextRequest): Promise<AuthenticatedUser | null> {
+// JWTトークンから認証ユーザー情報を取得
+export async function getAuthUser(): Promise<AuthenticatedUser | null> {
   try {
-    const app = getStackServerApp();
-    const user = await app.getUser();
+    const cookieStore = cookies()
+    const token = cookieStore.get('auth-token')?.value
 
-    if (!user) {
-      return null;
+    if (!token) {
+      return null
     }
 
-    return {
-      id: user.id,
-      stackUserId: user.id,
-      email: user.primaryEmail || '',
-      displayName: user.displayName || undefined,
-    };
+    const decoded = jwt.verify(token, JWT_SECRET) as any
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, email: true, name: true }
+    })
+
+    return user
   } catch (error) {
-    console.error('認証ユーザー取得エラー:', error);
-    return null;
+    return null
   }
 }
 
-/**
- * APIエンドポイントで認証が必要かチェックし、未認証の場合はエラーレスポンスを返す
- * @param request Next.js Request オブジェクト
- * @returns 認証ユーザー情報または認証エラーレスポンス
- */
+// API認証必須チェック
 export async function requireAuth(request?: NextRequest): Promise<{ user: AuthenticatedUser } | { error: Response }> {
-  const user = await getAuthenticatedUser(request);
+  const user = await getAuthUser()
 
   if (!user) {
     return {
-      error: new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Authentication required',
-          message: 'このAPIエンドポイントにはログインが必要です',
-          code: 'UNAUTHORIZED'
-        }),
-        {
-          status: 401,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+      error: NextResponse.json(
+        { error: '認証が必要です' },
+        { status: 401 }
       )
-    };
+    }
   }
 
-  return { user };
+  return { user }
 }
 
-/**
- * リソースの所有者確認を行う
- * @param userId 認証ユーザーID
- * @param resourceUserId リソースの所有者ID
- * @returns 所有者確認結果
- */
-export function verifyOwnership(userId: string, resourceUserId: string | null): boolean {
-  return resourceUserId === userId;
-}
+// ユーザー登録
+export async function signUp(email: string, password: string, name?: string) {
+  try {
+    // 既存ユーザーチェック
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    })
 
-/**
- * 所有者チェックでエラーレスポンスを生成する
- * @returns 権限不足エラーレスポンス
- */
-export function createOwnershipError(): Response {
-  return new Response(
-    JSON.stringify({
-      success: false,
-      error: 'Access denied',
-      message: 'このリソースへのアクセス権限がありません',
-      code: 'FORBIDDEN'
-    }),
-    {
-      status: 403,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+    if (existingUser) {
+      throw new Error('このメールアドレスは既に登録されています')
     }
-  );
+
+    // パスワードハッシュ化
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    // ユーザー作成
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name: name || email.split('@')[0],
+      },
+      select: { id: true, email: true, name: true }
+    })
+
+    // JWTトークン生成
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET)
+
+    return { user, token }
+  } catch (error) {
+    throw error
+  }
+}
+
+// ユーザーログイン
+export async function signIn(email: string, password: string) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, name: true, password: true }
+    })
+
+    if (!user) {
+      throw new Error('メールアドレスまたはパスワードが正しくありません')
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password || '')
+
+    if (!isValidPassword) {
+      throw new Error('メールアドレスまたはパスワードが正しくありません')
+    }
+
+    // JWTトークン生成
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET)
+
+    return {
+      user: { id: user.id, email: user.email, name: user.name },
+      token
+    }
+  } catch (error) {
+    throw error
+  }
+}
+
+// 所有者確認
+export function verifyOwnership(userId: string, resourceUserId: string | null): boolean {
+  return userId === resourceUserId
+}
+
+// 所有者確認エラーレスポンス
+export function createOwnershipError(): Response {
+  return NextResponse.json(
+    { error: 'このリソースへのアクセス権限がありません' },
+    { status: 403 }
+  )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useStackApp, useUser } from '@stackframe/stack'
+import { useAuth } from '@/app/providers'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -34,14 +34,26 @@ function SignInForm() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  const app = useStackApp()
-  const user = useUser()
+  const { user, loading } = useAuth()
   const router = useRouter()
 
   // 既にログイン済みの場合はダッシュボードへリダイレクト
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/dashboard')
+    }
+  }, [user, loading, router])
+
+  if (loading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </main>
+    )
+  }
+
   if (user) {
-    router.push('/dashboard')
-    return null
+    return null // リダイレクト中
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,41 +62,37 @@ function SignInForm() {
     setIsLoading(true)
 
     try {
-      const result = await app.signInWithCredential({
-        email,
-        password,
-        noRedirect: true
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password,
+        }),
       })
 
-      if (result.status === 'ok') {
-        router.push('/dashboard')
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        // ログイン成功時はページをリロードして認証状態を反映
+        window.location.href = '/dashboard'
       } else {
-        setIsLoading(false)
-        // Stack Authのエラータイプに対応
-        const errorMessage = result.error?.message || 'ログインに失敗しました'
-        if (errorMessage.includes('credentials') || errorMessage.includes('password')) {
+        const errorMessage = result.error || 'ログインに失敗しました'
+        if (errorMessage.includes('Invalid credentials') || errorMessage.includes('password')) {
           setError('メールアドレスまたはパスワードが正しくありません')
-        } else if (errorMessage.includes('not found') || errorMessage.includes('exist')) {
+        } else if (errorMessage.includes('not found') || errorMessage.includes('存在しません')) {
           setError('このメールアドレスは登録されていません')
         } else {
           setError('ログインに失敗しました')
         }
       }
     } catch (err: any) {
-      setIsLoading(false)
+      console.error('サインインエラー:', err)
       setError('エラーが発生しました')
-    }
-  }
-
-  const handleOAuthSignIn = async () => {
-    setError('')
-    setIsLoading(true)
-
-    try {
-      await app.signInWithOAuth('google')
-    } catch (err: any) {
+    } finally {
       setIsLoading(false)
-      setError('Googleログインに失敗しました')
     }
   }
 
@@ -160,25 +168,6 @@ function SignInForm() {
               {isLoading ? 'ログイン中...' : 'ログイン'}
             </button>
           </form>
-
-          <div className="mt-4">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200"></div>
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="px-2 bg-white text-slate-400">または</span>
-              </div>
-            </div>
-
-            <button
-              onClick={handleOAuthSignIn}
-              disabled={isLoading}
-              className="w-full mt-3 py-2.5 px-4 border border-slate-200 rounded-lg bg-white/70 text-slate-700 text-sm font-medium hover:bg-white hover:border-slate-300 disabled:opacity-50 transition-all duration-200 shadow-sm"
-            >
-              Googleでログイン
-            </button>
-          </div>
 
           <div className="mt-4 text-center text-xs text-slate-500">
             アカウントをお持ちでない方は{' '}

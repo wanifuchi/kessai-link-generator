@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { requireAuth } from '@/lib/auth';
 
+// Dynamic server usage for authentication
+export const dynamic = 'force-dynamic';
+
 const prisma = new PrismaClient();
 
 interface DashboardStats {
@@ -76,7 +79,7 @@ export async function GET(request: NextRequest) {
     prevStartDate.setDate(prevStartDate.getDate() - daysAgo);
 
     // ユーザー固有のフィルタ条件
-    const userFilter = { userId: user.stackUserId };
+    const userFilter = { userId: user.id };
 
     // 基本統計を並列で取得
     const [

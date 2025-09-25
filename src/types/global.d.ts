@@ -1,7 +1,7 @@
 // Global type definitions
 declare global {
   interface Window {
-    fetchIntercepted?: boolean;
+    // Add global window type extensions here if needed
   }
 }
 

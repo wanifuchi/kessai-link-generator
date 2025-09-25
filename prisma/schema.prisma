@@ -9,8 +9,8 @@ datasource db {
 
 model User {
   id           String        @id @default(cuid())
-  stackUserId  String?       @unique // Stack AuthのUser ID
   email        String        @unique
+  password     String?       // ハッシュ化されたパスワード
   name         String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt

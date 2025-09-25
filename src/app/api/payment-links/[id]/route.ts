@@ -3,6 +3,9 @@ import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { requireAuth, verifyOwnership, createOwnershipError } from '@/lib/auth';
 
+// Dynamic server usage for authentication
+export const dynamic = 'force-dynamic';
+
 const prisma = new PrismaClient();
 
 const updatePaymentLinkSchema = z.object({
@@ -51,7 +54,7 @@ export async function GET(
     }
 
     // 所有者確認
-    if (!verifyOwnership(user.stackUserId, paymentLink.userId)) {
+    if (!verifyOwnership(user.id, paymentLink.userId)) {
       return createOwnershipError();
     }
 
@@ -102,7 +105,7 @@ export async function PUT(
       }, { status: 404 });
     }
 
-    if (!verifyOwnership(user.stackUserId, existingPaymentLink.userId)) {
+    if (!verifyOwnership(user.id, existingPaymentLink.userId)) {
       return createOwnershipError();
     }
 
@@ -183,7 +186,7 @@ export async function DELETE(
       }, { status: 404 });
     }
 
-    if (!verifyOwnership(user.stackUserId, existingPaymentLink.userId)) {
+    if (!verifyOwnership(user.id, existingPaymentLink.userId)) {
       return createOwnershipError();
     }
 
