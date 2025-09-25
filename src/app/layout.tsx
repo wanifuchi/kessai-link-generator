@@ -74,7 +74,7 @@ export default function RootLayout({
                     </div>
                   </div>
 
-                  {/* Navigation */}
+                  {/* Static Navigation - Temporary for build fix */}
                   <nav className="hidden md:flex items-center space-x-6">
                     <a href="/" className="text-gray-700 hover:text-primary transition-colors">
                       ホーム
@@ -85,8 +85,8 @@ export default function RootLayout({
                     <a href="/settings" className="text-gray-700 hover:text-primary transition-colors">
                       API設定
                     </a>
-                    <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-gray-700 hover:text-primary transition-colors">
-                      ヘルプ
+                    <a href="/profile" className="text-gray-700 hover:text-primary transition-colors">
+                      プロフィール
                     </a>
                   </nav>
 
