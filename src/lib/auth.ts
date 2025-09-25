@@ -11,6 +11,7 @@ export interface AuthenticatedUser {
   id: string
   email: string
   name?: string
+  createdAt: string
 }
 
 // JWTトークンから認証ユーザー情報を取得
@@ -27,10 +28,17 @@ export async function getAuthUser(): Promise<AuthenticatedUser | null> {
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: { id: true, email: true, name: true }
+      select: { id: true, email: true, name: true, createdAt: true }
     })
 
-    return user
+    if (!user) return null
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name || undefined,
+      createdAt: user.createdAt.toISOString()
+    }
   } catch (error) {
     return null
   }
@@ -74,13 +82,21 @@ export async function signUp(email: string, password: string, name?: string) {
         password: hashedPassword,
         name: name || email.split('@')[0],
       },
-      select: { id: true, email: true, name: true }
+      select: { id: true, email: true, name: true, createdAt: true }
     })
 
     // JWTトークン生成
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET)
 
-    return { user, token }
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name || undefined,
+        createdAt: user.createdAt.toISOString()
+      },
+      token
+    }
   } catch (error) {
     throw error
   }
@@ -91,7 +107,7 @@ export async function signIn(email: string, password: string) {
   try {
     const user = await prisma.user.findUnique({
       where: { email },
-      select: { id: true, email: true, name: true, password: true }
+      select: { id: true, email: true, name: true, password: true, createdAt: true }
     })
 
     if (!user) {
@@ -108,7 +124,7 @@ export async function signIn(email: string, password: string) {
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET)
 
     return {
-      user: { id: user.id, email: user.email, name: user.name },
+      user: { id: user.id, email: user.email, name: user.name || undefined, createdAt: user.createdAt.toISOString() },
       token
     }
   } catch (error) {

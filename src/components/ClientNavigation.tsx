@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useUser } from '@stackframe/stack'
+import { useAuth } from '@/app/providers'
 import Link from 'next/link'
 import { User, LogOut, Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 export default function ClientNavigation() {
   const [mounted, setMounted] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const user = useUser()
+  const { user, signOut } = useAuth()
 
   // クライアントサイドでのみ実行
   useEffect(() => {
@@ -45,8 +45,10 @@ export default function ClientNavigation() {
   }
 
   const handleSignOut = async () => {
-    if (user) {
-      await user.signOut({ redirectUrl: '/' })
+    try {
+      await signOut()
+    } catch (error) {
+      console.error('ログアウトエラー:', error)
     }
   }
 
@@ -85,18 +87,10 @@ export default function ClientNavigation() {
               className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                {user.profileImageUrl ? (
-                  <img
-                    src={user.profileImageUrl}
-                    alt="プロフィール"
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <User className="w-4 h-4 text-white" />
-                )}
+                <User className="w-4 h-4 text-white" />
               </div>
               <span className="text-sm font-medium text-gray-700">
-                {user.displayName || 'ユーザー'}
+                {user.name || 'ユーザー'}
               </span>
             </Link>
 
@@ -197,21 +191,13 @@ export default function ClientNavigation() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
                       <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                        {user.profileImageUrl ? (
-                          <img
-                            src={user.profileImageUrl}
-                            alt="プロフィール"
-                            className="w-full h-full rounded-full object-cover"
-                          />
-                        ) : (
-                          <User className="w-5 h-5 text-white" />
-                        )}
+                        <User className="w-5 h-5 text-white" />
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">
-                          {user.displayName || 'ユーザー'}
+                          {user.name || 'ユーザー'}
                         </p>
-                        <p className="text-sm text-gray-500">{user.primaryEmail}</p>
+                        <p className="text-sm text-gray-500">{user.email}</p>
                       </div>
                     </div>
                     <Button
