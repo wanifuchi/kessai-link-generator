@@ -19,13 +19,11 @@ export function getStackClientApp() {
   const projectId = process.env.NEXT_PUBLIC_STACK_PROJECT_ID;
   const publishableClientKey = process.env.NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY;
 
-  console.log('🔍 getStackClientApp 詳細チェック:', {
-    projectIdRaw: projectId,
-    publishableKeyRaw: publishableClientKey,
-    projectIdType: typeof projectId,
-    publishableKeyType: typeof publishableClientKey,
-    projectIdTrimmed: projectId?.trim(),
-    publishableKeyTrimmed: publishableClientKey?.trim(),
+  console.log('🔍 getStackClientApp 最小設定:', {
+    projectId: projectId?.slice(0, 8) + '...',
+    publishableClientKey: publishableClientKey?.slice(0, 8) + '...',
+    hasProjectId: !!projectId,
+    hasPublishableKey: !!publishableClientKey
   });
 
   if (!projectId || !publishableClientKey) {
@@ -34,43 +32,29 @@ export function getStackClientApp() {
     );
   }
 
-  // 環境変数をトリミングして使用
-  const cleanProjectId = projectId.trim();
-  const cleanPublishableClientKey = publishableClientKey.trim();
+  console.log('🔍 StackClientApp 最小限設定でインスタンス作成中...');
 
-  console.log('🔍 StackClientApp設定:', {
-    projectId: cleanProjectId,
-    publishableClientKey: cleanPublishableClientKey,
-    tokenStore: "nextjs-cookie"
-  });
-
+  // 最小限の設定のみ使用
   return new StackClientApp({
-    projectId: cleanProjectId,
-    publishableClientKey: cleanPublishableClientKey,
-    tokenStore: "nextjs-cookie",
+    projectId,
+    publishableClientKey,
   });
 }
 
 export function getStackServerApp() {
   const { projectId, publishableClientKey, secretServerKey } = ensureEnv();
 
-  // サーバー側でも環境変数をクリーンアップ
-  const cleanProjectId = projectId.trim();
-  const cleanPublishableClientKey = publishableClientKey.trim();
-  const cleanSecretServerKey = secretServerKey.trim();
-
-  console.log('🔍 StackServerApp設定:', {
-    projectId: cleanProjectId,
-    publishableClientKey: cleanPublishableClientKey,
-    secretServerKey: cleanSecretServerKey.slice(0, 8) + '...',
-    tokenStore: "nextjs-cookie"
+  console.log('🔍 StackServerApp 最小設定:', {
+    projectId: projectId.slice(0, 8) + '...',
+    publishableClientKey: publishableClientKey.slice(0, 8) + '...',
+    secretServerKey: secretServerKey.slice(0, 8) + '...'
   });
 
+  // 最小限の設定のみ使用
   return new StackServerApp({
-    projectId: cleanProjectId,
-    publishableClientKey: cleanPublishableClientKey,
-    secretServerKey: cleanSecretServerKey,
-    tokenStore: "nextjs-cookie",
+    projectId,
+    publishableClientKey,
+    secretServerKey,
   });
 }
 
