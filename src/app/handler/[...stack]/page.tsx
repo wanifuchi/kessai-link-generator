@@ -1,12 +1,7 @@
-import { StackHandler } from '@stackframe/stack';
-import { getStackServerApp } from '@/lib/stack';
+import { redirect } from 'next/navigation'
 
-export default function Handler(props: { params: any, searchParams: any }) {
-  return (
-    <StackHandler
-      app={getStackServerApp()}
-      routeProps={props}
-      fullPage={true}
-    />
-  );
+export default function Handler() {
+  // Stack Authを削除したため、認証関連のハンドラーは不要
+  // ホームページにリダイレクト
+  redirect('/')
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useStackApp, useUser } from '@stackframe/stack'
+import { useAuth } from '@/app/providers'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -34,14 +34,26 @@ function ForgotPasswordForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [info, setInfo] = useState('')
 
-  const app = useStackApp()
-  const user = useUser()
+  const { user, loading } = useAuth()
   const router = useRouter()
 
   // 既にログイン済みの場合はダッシュボードへリダイレクト
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/dashboard')
+    }
+  }, [user, loading, router])
+
+  if (loading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </main>
+    )
+  }
+
   if (user) {
-    router.push('/dashboard')
-    return null
+    return null // リダイレクト中
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,9 +62,9 @@ function ForgotPasswordForm() {
     setIsLoading(true)
 
     try {
-      // TODO: Stack Authのパスワードリセット機能の実装
-      // 現在は機能を一時無効化してビルドエラーを回避
-      console.log('🔥 パスワードリセット（一時無効）:', { email })
+      // TODO: パスワードリセット機能の実装
+      // 現在は機能を一時無効化
+      console.log('🔥 パスワードリセット（準備中）:', { email })
 
       // 一時的な模擬応答
       setTimeout(() => {

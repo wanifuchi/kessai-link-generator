@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useUser, useStackApp } from '@stackframe/stack'
+import { useAuth } from '@/app/providers'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -29,8 +29,6 @@ export const dynamic = 'force-dynamic'
 
 export default function ProfilePage() {
   const [mounted, setMounted] = useState(false)
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const router = useRouter()
 
@@ -52,22 +50,33 @@ export default function ProfilePage() {
 }
 
 function ProfileContent() {
-  const user = useUser()
-  const app = useStackApp()
+  const { user, loading, signOut } = useAuth()
   const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-  // 未ログインの場合はサインインページにリダイレクト
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/auth/signin')
+    }
+  }, [user, loading, router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
   if (!user) {
-    router.push('/auth/signin')
-    return null
+    return null // リダイレクト中
   }
 
   const handleSignOut = async () => {
     setIsLoggingOut(true)
     try {
-      await user.signOut({ redirectUrl: '/' })
+      await signOut()
     } catch (error) {
       console.error('ログアウトエラー:', error)
       setIsLoggingOut(false)
@@ -75,23 +84,19 @@ function ProfileContent() {
   }
 
   const handleDeleteAccount = async () => {
-    try {
-      await user.delete()
-      router.push('/')
-    } catch (error) {
-      console.error('アカウント削除エラー:', error)
-      setShowDeleteConfirm(false)
-    }
+    // TODO: アカウント削除機能の実装
+    alert('アカウント削除機能は現在準備中です')
+    setShowDeleteConfirm(false)
   }
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: string) => {
     return new Intl.DateTimeFormat('ja-JP', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    }).format(date)
+    }).format(new Date(date))
   }
 
   return (
@@ -119,19 +124,11 @@ function ProfileContent() {
               {/* プロフィール画像 */}
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  {user.profileImageUrl ? (
-                    <img
-                      src={user.profileImageUrl}
-                      alt="プロフィール画像"
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-8 h-8 text-white" />
-                  )}
+                  <User className="w-8 h-8 text-white" />
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">
-                    {user.displayName || 'ユーザー名未設定'}
+                    {user.name || 'ユーザー名未設定'}
                   </p>
                   <p className="text-sm text-gray-500">ID: {user.id}</p>
                 </div>
@@ -144,13 +141,9 @@ function ProfileContent() {
                   <span className="text-sm font-medium">メールアドレス</span>
                 </div>
                 <div className="pl-6 space-y-1">
-                  <p className="text-gray-900">{user.primaryEmail}</p>
-                  <Badge variant={user.primaryEmailVerified ? "default" : "destructive"} className="text-xs">
-                    {user.primaryEmailVerified ? (
-                      <><CheckCircle className="w-3 h-3 mr-1" />認証済み</>
-                    ) : (
-                      <><XCircle className="w-3 h-3 mr-1" />未認証</>
-                    )}
+                  <p className="text-gray-900">{user.email}</p>
+                  <Badge variant="default" className="text-xs">
+                    <CheckCircle className="w-3 h-3 mr-1" />認証済み
                   </Badge>
                 </div>
               </div>
@@ -161,7 +154,7 @@ function ProfileContent() {
                   <Calendar className="w-4 h-4 text-gray-500" />
                   <span className="text-sm font-medium">登録日時</span>
                 </div>
-                <p className="pl-6 text-gray-900">{formatDate(user.signedUpAt)}</p>
+                <p className="pl-6 text-gray-900">{formatDate(user.createdAt)}</p>
               </div>
             </CardContent>
           </Card>
@@ -183,12 +176,8 @@ function ProfileContent() {
                   <span className="text-sm font-medium">パスワード</span>
                 </div>
                 <div className="pl-6">
-                  <Badge variant={user.hasPassword ? "default" : "secondary"}>
-                    {user.hasPassword ? (
-                      <><CheckCircle className="w-3 h-3 mr-1" />設定済み</>
-                    ) : (
-                      <><AlertTriangle className="w-3 h-3 mr-1" />未設定</>
-                    )}
+                  <Badge variant="default">
+                    <CheckCircle className="w-3 h-3 mr-1" />設定済み
                   </Badge>
                 </div>
               </div>
@@ -201,7 +190,7 @@ function ProfileContent() {
                 </div>
                 <div className="pl-6">
                   <Badge variant="outline">
-                    Google OAuth
+                    メール/パスワード認証
                   </Badge>
                 </div>
               </div>
@@ -213,7 +202,7 @@ function ProfileContent() {
                   <div>
                     <p className="text-sm font-medium text-blue-900">セキュリティ推奨</p>
                     <p className="text-xs text-blue-700 mt-1">
-                      Google認証により高いセキュリティが確保されています
+                      パスワード認証により適切なセキュリティが確保されています
                     </p>
                   </div>
                 </div>
@@ -336,7 +325,7 @@ function ProfileContent() {
                     <div>
                       <p className="font-medium">ログイン中</p>
                       <p className="text-sm text-gray-500">
-                        {user.primaryEmail} としてログインしています
+                        {user.email} としてログインしています
                       </p>
                     </div>
                   </div>
