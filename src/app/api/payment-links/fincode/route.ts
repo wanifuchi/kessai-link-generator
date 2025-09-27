@@ -260,7 +260,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    if (paymentLink.status === 'completed') {
+    if (paymentLink.status === 'succeeded') {
       return NextResponse.json(
         { success: false, error: '完了済みの決済はキャンセルできません' },
         { status: 400 }
