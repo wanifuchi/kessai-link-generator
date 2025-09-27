@@ -54,11 +54,11 @@ export const authOptions: NextAuthOptions = {
       console.log('SignOut event triggered')
       // 手動でセッション削除を実行（PrismaAdapterが不完全な場合の対策）
       try {
-        if (session) {
-          console.log('Manually deleting session:', session.sessionToken)
+        if (token?.sessionToken) {
+          console.log('Manually deleting session:', token.sessionToken)
           await prisma.session.deleteMany({
             where: {
-              sessionToken: session.sessionToken
+              sessionToken: token.sessionToken as string
             }
           })
         }
