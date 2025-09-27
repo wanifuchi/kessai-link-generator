@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     const paypalUrl = await paypalService.createPaymentLink({
       amount: paymentLink.amount,
       currency: paymentLink.currency,
-      productName: paymentLink.title,
+      productName: paymentLink.description,
       description: paymentLink.description || undefined,
     }, paymentLinkId);
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       paymentLinkId,
       amount: paymentLink.amount,
       currency: paymentLink.currency,
-      title: paymentLink.title,
+      title: paymentLink.description,
     });
 
     return NextResponse.json({

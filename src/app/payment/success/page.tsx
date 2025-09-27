@@ -87,7 +87,7 @@ function PaymentSuccessContent() {
         if (completedTransaction) {
           setPaymentDetails({
             id: paymentLink.id,
-            title: paymentLink.title,
+            title: paymentLink.description,
             amount: completedTransaction.amount,
             currency: completedTransaction.currency,
             service: completedTransaction.service,

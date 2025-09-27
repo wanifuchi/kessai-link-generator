@@ -225,7 +225,7 @@ export default function PaymentLinkPage() {
                 </Badge>
               </div>
               <CardTitle className="text-3xl font-bold text-gray-900 mb-4">
-                {paymentLink.title}
+                {paymentLink.description}
               </CardTitle>
               {paymentLink.description && (
                 <CardDescription className="text-lg text-gray-600 mb-6">
@@ -324,7 +324,7 @@ export default function PaymentLinkPage() {
                       paymentUrl={paymentLink.paymentUrl}
                       amount={paymentLink.amount}
                       currency={paymentLink.currency}
-                      title={paymentLink.title}
+                      title={paymentLink.description}
                       onSuccess={(data) => {
                         console.log('PayPal決済成功:', data);
                       }}

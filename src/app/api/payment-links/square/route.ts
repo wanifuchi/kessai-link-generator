@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         qrCodeUrl: `/api/qr-code?url=${encodeURIComponent(paymentLink.paymentUrl)}`,
         shareUrl: `${process.env.NEXTAUTH_URL}/p/${paymentLink.id}`,
         service: 'square',
-        title: paymentLink.title,
+        title: paymentLink.description,
         amount: paymentLink.amount,
         currency: paymentLink.currency,
         status: paymentLink.status,
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         id: paymentLink.id,
-        title: paymentLink.title,
+        title: paymentLink.description,
         amount: paymentLink.amount,
         currency: paymentLink.currency,
         service: paymentLink.service,

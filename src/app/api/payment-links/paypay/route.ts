@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         qrCodeData: paypayResult.qrCodeData, // PayPay独自のQRコード画像
         shareUrl: `${process.env.NEXTAUTH_URL}/p/${paymentLink.id}`,
         service: 'paypay',
-        title: paymentLink.title,
+        title: paymentLink.description,
         amount: paymentLink.amount,
         currency: paymentLink.currency,
         status: paymentLink.status,
@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         id: paymentLink.id,
-        title: paymentLink.title,
+        title: paymentLink.description,
         amount: paymentLink.amount,
         currency: paymentLink.currency,
         service: paymentLink.service,
