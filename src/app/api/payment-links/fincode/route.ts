@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
       });
     } else if (paymentId) {
       paymentLink = await prisma.paymentLink.findFirst({
-        where: { serviceId: paymentId },
+        where: { stripePaymentIntentId: paymentId },
       });
     }
 
@@ -236,7 +236,7 @@ export async function DELETE(request: NextRequest) {
       });
     } else if (paymentId) {
       paymentLink = await prisma.paymentLink.findFirst({
-        where: { serviceId: paymentId },
+        where: { stripePaymentIntentId: paymentId },
       });
     }
 
