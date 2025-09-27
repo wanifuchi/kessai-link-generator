@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     if (!fincodeResult.success) {
       return NextResponse.json(
-        createErrorResponse(fincodeResult.error, PaymentService.fincode),
+        createErrorResponse(fincodeResult.error || 'Fincode決済の作成に失敗しました', PaymentService.fincode),
         { status: 400 }
       );
     }
