@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
             currency: capture.amount.currency_code.toUpperCase(),
             service: 'paypal',
             serviceTransactionId: capture.id,
-            status: 'succeeded',
+            status: 'completed',
             paidAt: new Date(),
             customerEmail: captureResult.payer?.email_address,
             customerName: `${captureResult.payer?.name?.given_name || ''} ${captureResult.payer?.name?.surname || ''}`.trim(),
