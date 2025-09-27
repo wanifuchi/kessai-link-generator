@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFincodeService } from '@/lib/fincode';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -90,7 +88,7 @@ async function handlePaymentCaptured(eventData: any) {
       where: {
         OR: [
           { id: orderId },
-          { serviceId: paymentId },
+          { stripePaymentIntentId: paymentId },
         ],
         service: 'fincode',
       },
@@ -108,8 +106,8 @@ async function handlePaymentCaptured(eventData: any) {
     await prisma.paymentLink.update({
       where: { id: paymentLink.id },
       data: {
-        status: 'completed',
-        serviceId: paymentId,
+        status: 'succeeded',
+        stripePaymentIntentId: paymentId,
       },
     });
 
@@ -122,7 +120,7 @@ async function handlePaymentCaptured(eventData: any) {
         serviceTransactionId: paymentId,
         amount: amount || paymentLink.amount,
         currency: currency || paymentLink.currency,
-        status: 'completed',
+        status: 'COMPLETED',
         paidAt: new Date(),
         metadata: JSON.stringify({
           eventType: 'payment.captured',
@@ -154,7 +152,7 @@ async function handlePaymentAuthorized(eventData: any) {
       where: {
         OR: [
           { id: orderId },
-          { serviceId: paymentId },
+          { stripePaymentIntentId: paymentId },
         ],
         service: 'fincode',
       },
@@ -173,7 +171,7 @@ async function handlePaymentAuthorized(eventData: any) {
       where: { id: paymentLink.id },
       data: {
         status: 'pending', // 認証済みだが完了ではない
-        serviceId: paymentId,
+        stripePaymentIntentId: paymentId,
       },
     });
 
@@ -198,7 +196,7 @@ async function handlePaymentFailed(eventData: any) {
       where: {
         OR: [
           { id: orderId },
-          { serviceId: paymentId },
+          { stripePaymentIntentId: paymentId },
         ],
         service: 'fincode',
       },
@@ -217,7 +215,7 @@ async function handlePaymentFailed(eventData: any) {
       where: { id: paymentLink.id },
       data: {
         status: 'failed',
-        serviceId: paymentId,
+        stripePaymentIntentId: paymentId,
       },
     });
 
@@ -242,7 +240,7 @@ async function handlePaymentCanceled(eventData: any) {
       where: {
         OR: [
           { id: orderId },
-          { serviceId: paymentId },
+          { stripePaymentIntentId: paymentId },
         ],
         service: 'fincode',
       },
@@ -260,8 +258,8 @@ async function handlePaymentCanceled(eventData: any) {
     await prisma.paymentLink.update({
       where: { id: paymentLink.id },
       data: {
-        status: 'canceled',
-        serviceId: paymentId,
+        status: 'cancelled',
+        stripePaymentIntentId: paymentId,
       },
     });
 

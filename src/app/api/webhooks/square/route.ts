@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSquareService } from '@/lib/square';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -75,8 +73,8 @@ async function handlePaymentEvent(eventType: string, eventData: any) {
     let paymentLink = await prisma.paymentLink.findFirst({
       where: {
         OR: [
-          { serviceId: paymentId },
-          { serviceId: orderId },
+          { stripePaymentIntentId: paymentId },
+          { stripePaymentIntentId: orderId },
         ],
         service: 'square',
       },
@@ -96,14 +94,14 @@ async function handlePaymentEvent(eventType: string, eventData: any) {
 
     switch (status) {
       case 'COMPLETED':
-        newStatus = 'completed';
+        newStatus = 'succeeded';
         completedAt = new Date();
         break;
       case 'FAILED':
         newStatus = 'failed';
         break;
       case 'CANCELED':
-        newStatus = 'canceled';
+        newStatus = 'cancelled';
         break;
       case 'PENDING':
       default:
@@ -115,13 +113,13 @@ async function handlePaymentEvent(eventType: string, eventData: any) {
     await prisma.paymentLink.update({
       where: { id: paymentLink.id },
       data: {
-        status: newStatus as 'pending' | 'completed' | 'failed' | 'canceled' | 'expired',
-        serviceId: paymentId, // 最新のPayment IDで更新
+        status: newStatus as 'pending' | 'succeeded' | 'failed' | 'cancelled' | 'expired',
+        stripePaymentIntentId: paymentId, // 最新のPayment IDで更新
       },
     });
 
     // トランザクション記録を作成（完了時のみ）
-    if (newStatus === 'completed' && amount) {
+    if (newStatus === 'succeeded' && amount) {
       await prisma.transaction.create({
         data: {
           id: `square_tx_${paymentId}`,
@@ -130,7 +128,7 @@ async function handlePaymentEvent(eventType: string, eventData: any) {
           serviceTransactionId: paymentId,
           amount: amount / 100, // Squareは最小単位なので100で割る
           currency: currency || paymentLink.currency,
-          status: 'completed',
+          status: 'COMPLETED',
           paidAt: new Date(),
           metadata: JSON.stringify({
             eventType,
