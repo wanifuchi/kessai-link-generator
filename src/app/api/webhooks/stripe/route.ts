@@ -1,338 +1,213 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { headers } from 'next/headers';
-import { PrismaClient } from '@prisma/client';
-import Stripe from 'stripe';
+import { NextRequest, NextResponse } from 'next/server'
+import { headers } from 'next/headers'
+import Stripe from 'stripe'
+import { prisma } from '@/lib/prisma'
+import { PaymentStatus } from '@/types/payment'
 
-const prisma = new PrismaClient();
-
-// Webhookシークレットとバイトチェック付きで取得
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-
-if (!endpointSecret) {
-  console.error('STRIPE_WEBHOOK_SECRET is not set');
-}
-
-if (!stripeSecretKey) {
-  console.error('STRIPE_SECRET_KEY is not set');
-}
-
-// Stripe インスタンス初期化
-const stripe = new Stripe(stripeSecretKey || '', {
-  apiVersion: '2024-06-20',
-});
-
-// Stripeウェブフックの処理
+/**
+ * Stripe Webhook処理
+ */
 export async function POST(request: NextRequest) {
-  if (!endpointSecret) {
-    console.error('Stripe webhook secret is not configured');
-    return NextResponse.json({
-      success: false,
-      error: 'Webhook secret not configured'
-    }, { status: 500 });
-  }
-  
   try {
-    const body = await request.text();
-    const sig = request.headers.get('stripe-signature');
-    
-    if (!sig) {
-      return NextResponse.json({
-        success: false,
-        error: 'No signature found'
-      }, { status: 400 });
-    }
-    
-    let event: Stripe.Event;
+    const body = await request.text()
+    const headersList = headers()
+    const signature = headersList.get('stripe-signature')
 
+    if (!signature) {
+      console.error('Stripe署名がありません')
+      return NextResponse.json(
+        { error: 'Stripe署名が見つかりません' },
+        { status: 400 }
+      )
+    }
+
+    // 環境変数からWebhookシークレットを取得
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+    if (!webhookSecret) {
+      console.error('STRIPE_WEBHOOK_SECRETが設定されていません')
+      return NextResponse.json(
+        { error: 'Webhook設定エラー' },
+        { status: 500 }
+      )
+    }
+
+    // Stripeイベントを検証
+    let event: Stripe.Event
     try {
-      // Webhookの署名を検証
-      event = stripe.webhooks.constructEvent(body, sig, endpointSecret);
-    } catch (err) {
-      console.error('Webhook signature verification failed:', err);
-      return NextResponse.json({
-        success: false,
-        error: `Webhook Error: ${err instanceof Error ? err.message : 'Unknown error'}`
-      }, { status: 400 });
+      // 一時的にStripeインスタンスを作成（署名検証用）
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+        apiVersion: '2024-06-20',
+      })
+
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+    } catch (error) {
+      console.error('Webhook署名検証エラー:', error)
+      return NextResponse.json(
+        { error: 'Webhook署名の検証に失敗しました' },
+        { status: 400 }
+      )
     }
 
-    console.log('Received Stripe webhook event:', {
-      type: event.type,
-      id: event.id,
-      created: new Date(event.created * 1000).toISOString(),
-    });
-    
-    // イベントタイプに基づく処理
-    switch (event.type) {
-      case 'checkout.session.completed':
-        await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
-        break;
-      
-      case 'checkout.session.expired':
-        await handleCheckoutSessionExpired(event.data.object as Stripe.Checkout.Session);
-        break;
+    console.log('Stripeイベント受信:', event.type, event.id)
 
+    // イベントタイプに応じて処理
+    switch (event.type) {
       case 'payment_intent.succeeded':
-        await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent);
-        break;
+        await handlePaymentSucceeded(event.data.object as Stripe.PaymentIntent)
+        break
 
       case 'payment_intent.payment_failed':
-        await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
-        break;
+        await handlePaymentFailed(event.data.object as Stripe.PaymentIntent)
+        break
 
-      case 'invoice.payment_succeeded':
-        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
-        break;
+      case 'payment_intent.canceled':
+        await handlePaymentCanceled(event.data.object as Stripe.PaymentIntent)
+        break
 
-      case 'invoice.payment_failed':
-        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
-        break;
-      
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        console.log(`未処理のイベントタイプ: ${event.type}`)
     }
-    
-    return NextResponse.json({ received: true });
+
+    return NextResponse.json({ received: true })
 
   } catch (error) {
-    console.error('Webhook processing error:', error);
-    return NextResponse.json({
-      success: false,
-      error: 'Webhook processing failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.error('Webhook処理エラー:', error)
+    return NextResponse.json(
+      { error: 'Webhook処理に失敗しました' },
+      { status: 500 }
+    )
   }
 }
 
-// チェックアウトセッション完了時の処理
-async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+/**
+ * 決済成功時の処理
+ */
+async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
   try {
-    console.log('Processing checkout session completed:', session.id);
-
-    // payment_link_idがmetadataに含まれている場合の処理
-    const paymentLinkId = session.metadata?.paymentLinkId || session.metadata?.payment_link_id;
-    if (!paymentLinkId) {
-      console.warn('No payment_link_id in session metadata:', session.id);
-      return;
+    const linkId = paymentIntent.metadata?.linkId
+    if (!linkId) {
+      console.error('Payment Intentにリンク情報がありません:', paymentIntent.id)
+      return
     }
 
-    // PaymentLinkの存在確認
+    // 決済リンクを取得
     const paymentLink = await prisma.paymentLink.findUnique({
-      where: { id: paymentLinkId },
-    });
+      where: { id: linkId },
+    })
 
     if (!paymentLink) {
-      console.error('PaymentLink not found:', paymentLinkId);
-      return;
+      console.error('決済リンクが見つかりません:', linkId)
+      return
     }
 
-    // 既存のトランザクションを検索
-    const existingTransaction = await prisma.transaction.findFirst({
-      where: {
-        serviceTransactionId: session.id,
-      },
-    });
-
-    if (existingTransaction) {
-      // 既存のトランザクションを更新
-      await prisma.transaction.update({
-        where: { id: existingTransaction.id },
-        data: {
-          status: 'completed',
-          paidAt: new Date(),
-          customerEmail: session.customer_details?.email || undefined,
-          customerName: session.customer_details?.name || undefined,
-          metadata: {
-            stripeSessionId: session.id,
-            stripePaymentIntentId: session.payment_intent as string,
-            customerDetails: session.customer_details ? JSON.parse(JSON.stringify(session.customer_details)) : null,
-          },
-        },
-      });
-    } else {
-      // 新規トランザクションを作成
-      await prisma.transaction.create({
-        data: {
-          paymentLinkId,
-          status: 'completed',
-          amount: session.amount_total || 0,
-          currency: (session.currency || 'jpy').toUpperCase(),
-          service: 'stripe',
-          serviceTransactionId: session.id,
-          paidAt: new Date(),
-          customerEmail: session.customer_details?.email || undefined,
-          customerName: session.customer_details?.name || undefined,
-          customerPhone: session.customer_details?.phone || undefined,
-          metadata: {
-            stripeSessionId: session.id,
-            stripePaymentIntentId: session.payment_intent as string,
-            customerDetails: session.customer_details ? JSON.parse(JSON.stringify(session.customer_details)) : null,
-          },
-        },
-      });
+    // 既に処理済みの場合はスキップ
+    if (paymentLink.status === PaymentStatus.SUCCEEDED) {
+      console.log('決済は既に成功として処理済み:', linkId)
+      return
     }
 
-    // PaymentLinkのステータスを更新（必要に応じて）
-    if (paymentLink.status === 'pending') {
-      await prisma.paymentLink.update({
-        where: { id: paymentLinkId },
-        data: {
-          status: 'completed',
-        },
-      });
-    }
-
-    console.log('Successfully processed checkout session:', session.id);
-
-  } catch (error) {
-    console.error('Error processing checkout session:', error);
-    throw error;
-  }
-}
-
-// チェックアウトセッション期限切れ時の処理
-async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
-  try {
-    console.log('Processing checkout session expired:', session.id);
-
-    const paymentLinkId = session.metadata?.paymentLinkId || session.metadata?.payment_link_id;
-    if (!paymentLinkId) {
-      console.warn('No payment_link_id in session metadata:', session.id);
-      return;
-    }
-
-    // PaymentLinkのステータスを期限切れに更新
+    // 決済成功として更新
     await prisma.paymentLink.update({
-      where: { id: paymentLinkId },
-      data: { status: 'expired' },
-    });
-
-    console.log('Successfully processed session expiration:', session.id);
-
-  } catch (error) {
-    console.error('Error processing session expiration:', error);
-    throw error;
-  }
-}
-
-// Payment Intent成功時の処理
-async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
-  try {
-    console.log('Processing payment intent succeeded:', paymentIntent.id);
-
-    // Payment Intentに関連するtransactionを更新
-    const transaction = await prisma.transaction.findFirst({
-      where: {
-        serviceTransactionId: paymentIntent.id,
+      where: { id: linkId },
+      data: {
+        status: PaymentStatus.SUCCEEDED,
+        completedAt: new Date(),
+        stripePaymentIntentId: paymentIntent.id,
       },
-    });
+    })
 
-    if (transaction) {
-      await prisma.transaction.update({
-        where: { id: transaction.id },
-        data: {
-          status: 'completed',
-          paidAt: new Date(),
-          metadata: {
-            ...transaction.metadata as object,
-            paymentIntentId: paymentIntent.id,
-          },
-        },
-      });
+    console.log('決済成功処理完了:', linkId)
+
+  } catch (error) {
+    console.error('決済成功処理エラー:', error)
+    throw error
+  }
+}
+
+/**
+ * 決済失敗時の処理
+ */
+async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
+  try {
+    const linkId = paymentIntent.metadata?.linkId
+    if (!linkId) {
+      console.error('Payment Intentにリンク情報がありません:', paymentIntent.id)
+      return
     }
 
-  } catch (error) {
-    console.error('Error processing payment intent succeeded:', error);
-    throw error;
-  }
-}
+    // 決済リンクを取得
+    const paymentLink = await prisma.paymentLink.findUnique({
+      where: { id: linkId },
+    })
 
-// Payment Intent失敗時の処理
-async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
-  try {
-    console.log('Processing payment intent failed:', paymentIntent.id);
-
-    const paymentLinkId = paymentIntent.metadata?.paymentLinkId || paymentIntent.metadata?.payment_link_id;
-
-    if (paymentLinkId) {
-      // 既存のトランザクションを検索
-      const existingTransaction = await prisma.transaction.findFirst({
-        where: {
-          serviceTransactionId: paymentIntent.id,
-        },
-      });
-
-      if (existingTransaction) {
-        // 既存のトランザクションを更新
-        await prisma.transaction.update({
-          where: { id: existingTransaction.id },
-          data: {
-            status: 'failed',
-            metadata: {
-              paymentIntentId: paymentIntent.id,
-              failureReason: paymentIntent.last_payment_error?.message || 'Payment failed',
-              failureCode: paymentIntent.last_payment_error?.code || null,
-            },
-          },
-        });
-      } else {
-        // 新規トランザクションを作成
-        await prisma.transaction.create({
-          data: {
-            paymentLinkId,
-            amount: paymentIntent.amount,
-            currency: paymentIntent.currency.toUpperCase(),
-            service: 'stripe',
-            serviceTransactionId: paymentIntent.id,
-            status: 'failed',
-            metadata: {
-              paymentIntentId: paymentIntent.id,
-              failureReason: paymentIntent.last_payment_error?.message || 'Payment failed',
-              failureCode: paymentIntent.last_payment_error?.code || null,
-            },
-          },
-        });
-      }
+    if (!paymentLink) {
+      console.error('決済リンクが見つかりません:', linkId)
+      return
     }
 
+    // 既に処理済みの場合はスキップ
+    if (paymentLink.status === PaymentStatus.FAILED) {
+      console.log('決済は既に失敗として処理済み:', linkId)
+      return
+    }
+
+    // 決済失敗として更新
+    await prisma.paymentLink.update({
+      where: { id: linkId },
+      data: {
+        status: PaymentStatus.FAILED,
+        stripePaymentIntentId: paymentIntent.id,
+      },
+    })
+
+    console.log('決済失敗処理完了:', linkId)
+
   } catch (error) {
-    console.error('Error processing payment intent failed:', error);
-    throw error;
+    console.error('決済失敗処理エラー:', error)
+    throw error
   }
 }
 
-// インボイス支払い成功時の処理
-async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
+/**
+ * 決済キャンセル時の処理
+ */
+async function handlePaymentCanceled(paymentIntent: Stripe.PaymentIntent) {
   try {
-    console.log('Processing invoice payment succeeded:', invoice.id);
+    const linkId = paymentIntent.metadata?.linkId
+    if (!linkId) {
+      console.error('Payment Intentにリンク情報がありません:', paymentIntent.id)
+      return
+    }
 
-    // 継続課金や一回限りの請求書の処理
-    // 将来的な機能拡張のための基盤
+    // 決済リンクを取得
+    const paymentLink = await prisma.paymentLink.findUnique({
+      where: { id: linkId },
+    })
+
+    if (!paymentLink) {
+      console.error('決済リンクが見つかりません:', linkId)
+      return
+    }
+
+    // 既に処理済みの場合はスキップ
+    if (paymentLink.status === PaymentStatus.CANCELLED) {
+      console.log('決済は既にキャンセルとして処理済み:', linkId)
+      return
+    }
+
+    // 決済キャンセルとして更新
+    await prisma.paymentLink.update({
+      where: { id: linkId },
+      data: {
+        status: PaymentStatus.CANCELLED,
+        stripePaymentIntentId: paymentIntent.id,
+      },
+    })
+
+    console.log('決済キャンセル処理完了:', linkId)
 
   } catch (error) {
-    console.error('Error processing invoice payment succeeded:', error);
-    throw error;
+    console.error('決済キャンセル処理エラー:', error)
+    throw error
   }
-}
-
-// インボイス支払い失敗時の処理
-async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  try {
-    console.log('Processing invoice payment failed:', invoice.id);
-
-    // 失敗処理の実装
-    // 将来的なリトライロジックやアラート処理のための基盤
-
-  } catch (error) {
-    console.error('Error processing invoice payment failed:', error);
-    throw error;
-  }
-}
-
-// GETリクエストは許可しない
-export async function GET() {
-  return NextResponse.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
 }

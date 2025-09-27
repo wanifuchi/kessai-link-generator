@@ -1,192 +1,249 @@
-# 決済サービス統合プラットフォーム開発ログ
+# 決済リンク生成サービス - 作業継続ガイド
 
-## 📅 開発日時
-2025年9月23日
+最終更新: 2025年9月27日 13:05
 
-## 🎯 実装完了内容
+## 🎯 プロジェクト概要
 
-### 5つの決済サービスの完全実装
-1. **Stripe** ✅ - 既存の実装を改良
-2. **PayPal** ✅ - 既存の実装を改良
-3. **Square** ✅ - 新規完全実装
-4. **PayPay** ✅ - 新規完全実装（QRコード決済）
-5. **Fincode** ✅ - 新規完全実装（日本特化決済）
+**プロジェクト名**: Kessai Link（決済リンク生成サービス）
+**アーキテクチャ**: マルチテナント型（ユーザーが独自のAPI認証情報を管理）
+**技術スタック**: Next.js 14.2.5, NextAuth.js, Prisma, PostgreSQL (Neon), Vercel
 
-### 各サービスの実装詳細
+## 📅 開発履歴
 
-#### Square API統合
-- **ファイル**: `src/lib/square.ts`
-- **機能**:
-  - Checkout Session作成
-  - 決済ステータス確認
-  - Webhook署名検証
-  - 返金処理
-- **APIエンドポイント**: `/api/payment-links/square`
-- **Webhook**: `/api/webhooks/square`
+### 2025年9月27日 - マルチテナント型への大規模リファクタリング
+- **変更内容**: システム全体をマルチテナント型に再設計
+- **理由**: ユーザーが自分のAPI認証情報を管理する方式に変更
+- **主要作業**:
+  - UserPaymentConfigモデルの新規作成
+  - 暗号化システムの実装（AES暗号化）
+  - 決済設定管理UI/APIの完全実装
+  - 接続テスト機能の追加
 
-#### PayPay API統合
-- **ファイル**: `src/lib/paypay.ts`
-- **機能**:
-  - QRコード決済作成
-  - 決済ステータス確認
-  - HMAC-SHA256署名検証
-  - 返金処理
-- **APIエンドポイント**: `/api/payment-links/paypay`
-- **Webhook**: `/api/webhooks/paypay`
-- **特徴**: 日本のQRコード決済対応
+### 2025年9月23日 - 初期5決済サービス実装
+- Stripe, PayPal, Square, PayPay, Fincodeの統合
+- Enum値の小文字化リファクタリング
+- Webhook処理の実装
 
-#### Fincode API統合
-- **ファイル**: `src/lib/fincode.ts`
-- **機能**:
-  - 複数決済方法対応（カード、コンビニ、銀行振込、バーチャル口座）
-  - 決済ステータス確認
-  - Webhook署名検証
-  - 返金処理
-- **APIエンドポイント**: `/api/payment-links/fincode`
-- **Webhook**: `/api/webhooks/fincode`
-- **特徴**: 日本市場特化の決済方法
+## ✅ 現在の実装状況
 
-## 🔧 主要な技術的変更
+### フェーズ1: 基盤システム（完了）
 
-### Prismaスキーマの大規模リファクタリング
+#### 1. 認証システム ✅
+- **実装**: Google OAuth認証（NextAuth.js）
+- **状態**: 本番環境で動作確認済み
+- **環境変数**: Vercel設定完了
+- **問題解決**: 環境変数の改行文字問題を解決済み
 
-#### Enum値の変更（大文字→小文字）
+#### 2. データベース設計 ✅
 ```prisma
-// 変更前
-enum PaymentService {
-  STRIPE
-  PAYPAL
-  SQUARE
-  PAYPAY
-  FINCODE
-}
-
-// 変更後
-enum PaymentService {
-  stripe
-  paypal
-  square
-  paypay
-  fincode
+model UserPaymentConfig {
+  id              String        @id @default(cuid())
+  userId          String
+  provider        PaymentService
+  displayName     String        // ユーザー定義の設定名
+  encryptedConfig String        @db.Text // 暗号化されたAPI情報
+  isTestMode      Boolean       @default(true)
+  isActive        Boolean       @default(false)
+  verifiedAt      DateTime?     // 接続テスト成功日時
+  lastTestedAt    DateTime?
+  // ... 関連フィールド
 }
 ```
 
-#### その他のEnum変更
-- **PaymentStatus**: pending, completed, failed, canceled, expired
-- **TransactionStatus**: pending, completed, failed, cancelled, refunded
-- **Environment**: sandbox, production
+#### 3. 暗号化システム ✅
+- **実装場所**: `/src/lib/encryption.ts`
+- **方式**: AES-256-GCM
+- **用途**: API認証情報の安全な保存
 
-### フィールド名の統一
-- **PaymentLinkモデル**: externalId → serviceId
-- **Transactionモデル**: serviceTransactionId（変更なし）
-- **削除されたフィールド**: completedAt（PaymentLinkモデル）
+#### 4. 決済設定管理UI ✅
+- **URL**: `/settings/payments`
+- **機能一覧**:
+  - 設定一覧表示（カード形式）
+  - 新規作成・編集・削除
+  - プロバイダー別の設定フォーム
+  - 接続テスト機能
+  - テストモード/本番モード切り替え
+  - 有効/無効の切り替え
 
-### TypeScript型の修正
-- PrismaのJsonフィールド処理方法の変更（JSON.parse不要）
-- enum値の型キャストの追加
-- canceled vs cancelledの不一致の解決
+#### 5. RESTful API ✅
+```
+GET    /api/payment-configs          # 一覧取得
+POST   /api/payment-configs          # 新規作成
+GET    /api/payment-configs/[id]     # 個別取得
+PUT    /api/payment-configs/[id]     # 更新
+DELETE /api/payment-configs/[id]     # 削除
+POST   /api/payment-configs/[id]/test # 接続テスト
+```
 
-## 🐛 解決した主要な問題
+#### 6. 接続テスト実装状況 ✅
+- **Stripe**: ✅ アカウント情報取得による検証
+- **PayPal**: ✅ OAuth2トークン取得による検証
+- **Square**: 🚧 基本構造のみ（API実装待ち）
+- **PayPay**: 🚧 基本構造のみ（API実装待ち）
+- **fincode**: 🚧 基本構造のみ（API実装待ち）
 
-1. **TypeScriptビルドエラー**
-   - 約50箇所以上のenum値の不一致を修正
-   - フィールド名の不整合を全ファイルで統一
-   - 存在しないフィールドへの参照を削除
+## 🔧 チェックボックスの意味
 
-2. **データベーススキーマの整合性**
-   - Prismaスキーマとアプリケーションコードの統一
-   - 大文字から小文字への一括変換
+### テストモード
+- **ON（✅）**: テスト環境を使用
+  - テスト用APIキー（sk_test_*, pk_test_*）
+  - 実際の決済は発生しない
+  - テストカード番号で動作確認可能
+- **OFF（❌）**: 本番環境を使用
+  - 本番用APIキー（sk_live_*, pk_live_*）
+  - 実際の決済が発生
 
-3. **APIエンドポイントの完全実装**
-   - 各サービスの決済リンク作成
-   - Webhook処理の実装
-   - エラーハンドリングの追加
+### 有効にする
+- **ON（✅）**: この設定で決済リンクを作成可能
+- **OFF（❌）**: 設定は保存されるが使用されない
 
-## 📁 変更されたファイル一覧
+## 🚀 次のフェーズ（未実装）
 
-### 新規作成ファイル
-- src/lib/square.ts
-- src/lib/paypay.ts
-- src/lib/fincode.ts
-- src/app/api/payment-links/square/route.ts
-- src/app/api/payment-links/paypay/route.ts
-- src/app/api/payment-links/fincode/route.ts
-- src/app/api/webhooks/square/route.ts
-- src/app/api/webhooks/paypay/route.ts
-- src/app/api/webhooks/fincode/route.ts
-- PAYMENT_SETUP.md
+### フェーズ2: 決済リンク生成システム
+1. **決済リンク作成機能**
+   - UI: `/create`ページの作成
+   - API: `/api/payment-links`エンドポイント
+   - QRコード生成機能
 
-### 大規模修正ファイル
-- prisma/schema.prisma
-- src/app/api/payment-links/stripe/route.ts
-- src/app/api/payment-links/paypal/route.ts
-- src/app/api/webhooks/stripe/route.ts
-- src/app/api/webhooks/paypal/route.ts
-- src/app/api/dashboard/stats/route.ts
-- src/app/api/settings/route.ts
-- src/app/api/transactions/route.ts
-- src/app/api/transactions/[id]/route.ts
+2. **Stripe Payment Intents統合**
+3. **PayPal Express Checkout統合**
+4. **決済リンク管理ダッシュボード**
 
-## 🚀 次のステップ
+## 📁 重要ファイル構成
 
-### 必須作業
-1. **環境変数の設定**
-   - 各決済サービスのAPIキー取得
-   - .env.localへの本番用キー設定
-   - Webhook URLの設定
+```
+kessai_link/
+├── .env.local                          # 環境変数
+├── prisma/
+│   └── schema.prisma                   # DBスキーマ
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── auth/[...nextauth]/    # NextAuth
+│   │   │   └── payment-configs/       # 決済設定API
+│   │   │       ├── route.ts           # 一覧・作成
+│   │   │       └── [id]/
+│   │   │           ├── route.ts       # CRUD
+│   │   │           └── test/route.ts  # 接続テスト
+│   │   └── settings/
+│   │       └── payments/page.tsx      # 決済設定UI
+│   ├── lib/
+│   │   ├── auth.ts                    # 認証ユーティリティ
+│   │   ├── authOptions.ts             # NextAuth設定
+│   │   ├── encryption.ts              # 暗号化処理
+│   │   └── paymentConfigService.ts    # ビジネスロジック
+│   └── types/
+│       └── paymentConfig.ts           # 型定義
+└── continue.md                        # このファイル
+```
 
-2. **本番環境へのデプロイ**
-   - Vercel/Railwayへのデプロイ
-   - PostgreSQLデータベースのマイグレーション
-   - Webhook URLの各サービスへの登録
+## 🔧 開発環境セットアップ
 
-3. **テスト実施**
-   - 各決済サービスのE2Eテスト
-   - Webhook受信テスト
-   - エラーハンドリングのテスト
+```bash
+# 1. 依存関係インストール
+npm install
 
-### 推奨改善項目
-1. **UI/UXの改善**
-   - 決済サービス選択画面の実装
-   - 決済フローの最適化
-   - エラーメッセージの日本語化
+# 2. 環境変数設定（.env.local）
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=[生成済み]
+GOOGLE_CLIENT_ID=[設定済み]
+GOOGLE_CLIENT_SECRET=[設定済み]
+DATABASE_URL=[Neon PostgreSQL URL]
 
-2. **機能拡張**
-   - 定期課金（サブスクリプション）対応
-   - 領収書発行機能
-   - 売上レポート機能
-   - 管理画面の充実
+# 3. データベースセットアップ
+npx prisma generate
+npx prisma db push
 
-3. **パフォーマンス最適化**
-   - API応答速度の改善
-   - データベースクエリの最適化
-   - キャッシュ戦略の実装
+# 4. 開発サーバー起動
+npm run dev
+```
 
-## ⚠️ 注意事項
+## 🚨 トラブルシューティング
 
-1. **セキュリティ**
-   - APIキーは絶対にGitにコミットしない
-   - Webhook署名の検証を必ず実装
-   - 本番環境では必ずHTTPSを使用
+### 問題1: ファイルシステムエラー（ETIMEDOUT）
+**症状**: `.next/server/app`ディレクトリ作成時のタイムアウト
 
-2. **決済サービス固有の注意点**
-   - **PayPay**: 日本の電話番号形式が必要
-   - **Fincode**: 日本円（JPY）のみ対応
-   - **Square**: 金額は最小単位（センツ）で指定
+**解決方法**:
+```bash
+# 1. 全プロセス停止
+pkill -f "npm run dev"
 
-3. **データベース**
-   - enum値の変更によりマイグレーションが必要
-   - 既存データがある場合は変換スクリプトが必要
+# 2. キャッシュクリア
+rm -rf .next
+rm -rf node_modules/.cache
 
-## 🎉 完了状態
+# 3. サーバー再起動
+npm run dev
+```
 
-- TypeScriptビルドエラー: **完全解決** ✅
-- 5つの決済サービス統合: **完全実装** ✅
-- Webhook処理: **全サービス対応** ✅
-- データベーススキーマ: **統一完了** ✅
-- ドキュメント: **作成完了** ✅
+### 問題2: Internal Server Error
+**原因**: 複数のnpm devプロセスの競合
+**解決**: 上記のクリーンアップ手順を実行
+
+### 問題3: Google OAuth認証エラー
+**原因**: 環境変数の改行文字混入
+**解決**: Vercel環境変数を`printf`コマンドで再設定
+
+## 📊 現在のシステム状態
+
+| コンポーネント | 状態 | 備考 |
+|------------|------|------|
+| 認証システム | ✅ 正常 | Google OAuth動作確認済み |
+| データベース | ✅ 正常 | Neon PostgreSQL接続確立 |
+| API | ✅ 正常 | 全エンドポイント動作確認済み |
+| UI | ✅ 正常 | 決済設定管理画面完成 |
+| 暗号化 | ✅ 正常 | AES暗号化実装済み |
+| 接続テスト | ⚠️ 部分的 | Stripe/PayPalのみ完全実装 |
+
+## 🎯 実装優先順位
+
+### 高優先度
+1. Stripe Payment Intents統合
+2. 決済リンク作成UI/API
+3. QRコード生成
+
+### 中優先度
+1. PayPal Express Checkout統合
+2. ダッシュボード作成
+3. Webhook処理
+
+### 低優先度
+1. Square/PayPay/fincode完全実装
+2. 高度な分析機能
+3. 管理者機能
+
+## 💡 設計思想
+
+1. **セキュリティ第一**: API認証情報は必ず暗号化
+2. **ユーザー主権**: 各ユーザーが自分のAPI認証情報を管理
+3. **段階的リリース**: テストモード → 本番モードの安全な移行
+4. **拡張性**: 新しい決済プロバイダーを簡単に追加可能
+
+## 📝 重要メモ
+
+- **本番URL**: https://kessailink.vercel.app
+- **GitHubリポジトリ**: プライベート
+- **実装順序**: Stripe → PayPal → PayPay → Square → fincode
+- **データベース**: Neon (PostgreSQL)
+- **認証**: NextAuth.js + Google OAuth
+- **暗号化**: Node.js crypto (AES-256-GCM)
+
+## ⚠️ セキュリティ注意事項
+
+1. APIキーは絶対にGitにコミットしない
+2. 環境変数はVercelの環境変数設定で管理
+3. 暗号化キーは定期的に更新を検討
+4. Webhook署名の検証を必ず実装
+
+## 🔄 定期メンテナンス項目
+
+1. 依存パッケージの更新確認
+2. セキュリティ脆弱性のスキャン
+3. データベースバックアップ
+4. ログの確認と分析
 
 ---
 
-*最終更新: 2025年9月23日*
+*最終更新: 2025年9月27日 13:05*
 *開発者: Claude (Serena)*
+*次回作業時はこのドキュメントを参照して速やかに再開可能*

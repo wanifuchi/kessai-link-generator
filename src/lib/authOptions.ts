@@ -14,10 +14,35 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      return true // シンプルに認証を許可
+      console.log('🔐 SignIn callback:', {
+        userId: user.id,
+        userEmail: user.email,
+        provider: account?.provider,
+        accountType: account?.type
+      })
+
+      try {
+        // アカウント連携の確認と処理
+        if (account?.provider === 'google') {
+          console.log('✅ Google認証成功')
+          return true
+        }
+
+        console.log('✅ 認証許可')
+        return true
+      } catch (error) {
+        console.error('❌ SignIn callback error:', error)
+        return false
+      }
     },
     async redirect({ url, baseUrl }) {
       console.log('🔀 Redirect callback:', { url, baseUrl })
+
+      // エラーページからのリダイレクト処理
+      if (url.includes('error=')) {
+        console.log('⚠️ エラーページからのリダイレクト - サインインページへ')
+        return `${baseUrl}/auth/signin`
+      }
 
       // サインアウト後のリダイレクトを優先
       if (url === '/auth/signin' || url.includes('/auth/signin')) {
@@ -42,6 +67,12 @@ export const authOptions: NextAuthOptions = {
       return `${baseUrl}/dashboard`
     },
     async session({ session, user }) {
+      console.log('🔄 Session callback:', {
+        hasSession: !!session,
+        hasUser: !!user,
+        userEmail: user?.email || session?.user?.email
+      })
+
       // データベースセッション使用時はuserオブジェクトが渡される
       if (user) {
         session.user.id = user.id

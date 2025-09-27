@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import jwt from 'jsonwebtoken'
 import { getToken } from 'next-auth/jwt'
 
 export async function middleware(request: NextRequest) {
@@ -23,55 +22,17 @@ export async function middleware(request: NextRequest) {
 
       console.log('🔍 NextAuth token check:', {
         hasToken: !!nextAuthToken,
-        tokenPreview: nextAuthToken ? `${JSON.stringify(nextAuthToken).substring(0, 100)}...` : 'null'
+        userId: nextAuthToken?.sub || 'no-user'
       })
 
-      if (nextAuthToken) {
-        // セッションが存在する場合でも、データベース確認を実行
-        try {
-          const sessionVerifyResponse = await fetch(`${request.nextUrl.origin}/api/auth/session`, {
-            headers: {
-              'Cookie': request.headers.get('cookie') || '',
-            },
-          })
-
-          if (sessionVerifyResponse.ok) {
-            const sessionData = await sessionVerifyResponse.json()
-            if (sessionData && sessionData.user) {
-              console.log('✅ セッション有効確認完了')
-              return NextResponse.next()
-            }
-          }
-
-          console.log('❌ セッション確認失敗 - サインインページへリダイレクト')
-          return NextResponse.redirect(new URL('/auth/signin', request.url))
-        } catch (verifyError) {
-          console.warn('セッション確認エラー:', verifyError)
-          return NextResponse.redirect(new URL('/auth/signin', request.url))
-        }
+      if (nextAuthToken && nextAuthToken.sub) {
+        console.log('✅ 認証成功 - アクセス許可')
+        return NextResponse.next()
       }
 
-      // NextAuth.jsセッションがない場合は従来のJWTトークンをチェック
-      const jwtToken = request.cookies.get('auth-token')?.value
-
-      if (!jwtToken) {
-        console.log('🚫 トークンなし - サインインページへリダイレクト')
-        return NextResponse.redirect(new URL('/auth/signin', request.url))
-      }
-
-      // JWTを検証
-      const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this'
-      const decoded = jwt.verify(jwtToken, JWT_SECRET) as any
-
-      if (!decoded || !decoded.id) {
-        console.log('🚫 無効なJWTトークン - サインインページへリダイレクト')
-        return NextResponse.redirect(new URL('/auth/signin', request.url))
-      }
-
-      console.log('✅ JWT認証成功')
-      // 有効なトークンの場合は処理を続行
+      console.log('🚫 認証なし - サインインページへリダイレクト')
+      return NextResponse.redirect(new URL('/auth/signin', request.url))
     } catch (error) {
-      // 認証の検証に失敗した場合はサインインページにリダイレクト
       console.warn('❌ 認証検証失敗:', error)
       return NextResponse.redirect(new URL('/auth/signin', request.url))
     }

@@ -8,21 +8,22 @@ datasource db {
 }
 
 model User {
-  id            String        @id @default(cuid())
-  email         String        @unique
-  password      String?       // ハッシュ化されたパスワード
-  name          String?
-  googleId      String?       @unique // Google OAuth ID
-  provider      String?       @default("email") // 認証方法 ("email" | "google")
-  image         String?       // プロフィール画像URL (NextAuth.js標準)
-  emailVerified DateTime?     // メール認証状態
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  apiSettings   ApiSettings[]
-  paymentLinks  PaymentLink[]
-  subscription  Subscription?
-  accounts      Account[]     // NextAuth.js用
-  sessions      Session[]     // NextAuth.js用
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  password           String?             // ハッシュ化されたパスワード
+  name               String?
+  googleId           String?             @unique // Google OAuth ID
+  provider           String?             @default("email") // 認証方法 ("email" | "google")
+  image              String?             // プロフィール画像URL (NextAuth.js標準)
+  emailVerified      DateTime?           // メール認証状態
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  apiSettings        ApiSettings[]       // 旧設定（段階的に削除予定）
+  paymentConfigs     UserPaymentConfig[] // 新しい暗号化設定
+  paymentLinks       PaymentLink[]
+  subscription       Subscription?
+  accounts           Account[]           // NextAuth.js用
+  sessions           Session[]           // NextAuth.js用
 
   @@map("users")
 }
@@ -85,34 +86,32 @@ model Subscription {
 }
 
 model PaymentLink {
-  id            String         @id @default(cuid())
-  title         String
-  description   String?
-  amount        Int
-  currency      String         @default("jpy")
-  quantity      Int            @default(1)
-  service       PaymentService
-  serviceId     String
-  paymentUrl    String
-  qrCodeUrl     String?
-  qrCodeData    String?
-  customerEmail String?
-  successUrl    String?
-  cancelUrl     String?
-  expiresAt     DateTime?
-  status        PaymentStatus  @default(pending)
-  metadata      Json?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  userId        String?
-  user          User?          @relation(fields: [userId], references: [id])
-  transactions  Transaction[]
+  id                    String             @id @default(cuid())
+  userId                String
+  userPaymentConfigId   String
+  amount                Int                // 金額（セント単位）
+  currency              String             @default("jpy")
+  description           String?
+  status                PaymentStatus      @default(pending)
+  stripePaymentIntentId String?            // Stripe Payment Intent ID
+  linkUrl               String             @unique // 決済ページURL
+  qrCodeUrl             String?            // QRコード画像URL
+  expiresAt             DateTime?          // 有効期限
+  completedAt           DateTime?          // 決済完了日時
+  metadata              Json?              // 追加メタデータ
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
 
-  @@index([createdAt])
-  @@index([service])
-  @@index([status])
+  // リレーション
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userPaymentConfig     UserPaymentConfig  @relation(fields: [userPaymentConfigId], references: [id])
+  transactions          Transaction[]
+
   @@index([userId, createdAt])
-  @@index([service, status])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([stripePaymentIntentId])
+  @@index([linkUrl])
   @@map("payment_links")
 }
 
@@ -141,6 +140,30 @@ model Transaction {
   @@map("transactions")
 }
 
+// 新しい暗号化対応決済設定モデル
+model UserPaymentConfig {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        PaymentService
+  displayName     String        // ユーザー定義の設定名
+  encryptedConfig String        @db.Text // 暗号化されたAPI情報（JSON）
+  isTestMode      Boolean       @default(true)
+  isActive        Boolean       @default(false)
+  verifiedAt      DateTime?     // 接続テスト成功日時
+  lastTestedAt    DateTime?     // 最後の接続テスト日時
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  paymentLinks    PaymentLink[] // この設定を使用した決済リンク
+
+  @@unique([userId, provider, displayName])
+  @@index([userId])
+  @@index([isActive])
+  @@index([provider, isActive])
+  @@map("user_payment_configs")
+}
+
+// 旧設定モデル（段階的に削除予定）
 model ApiSettings {
   id             String         @id @default(cuid())
   service        PaymentService
@@ -181,9 +204,9 @@ enum PaymentService {
 
 enum PaymentStatus {
   pending
-  completed
+  succeeded
   failed
-  canceled
+  cancelled
   expired
 }
 

@@ -1,121 +1,134 @@
-export type PaymentService = 'stripe' | 'paypal' | 'square' | 'paypay' | 'fincode';
+import { PaymentService } from '@prisma/client'
 
-export type Environment = 'test' | 'production' | 'sandbox' | 'live';
-
-export interface PaymentServiceInfo {
-  id: PaymentService;
-  name: string;
-  displayName: string;
-  description: string;
-  logo: string;
-  feeRate: string;
-  supportedCurrencies: string[];
-  supportedCountries: string[];
-  features: string[];
+// 決済リンクの状態
+export enum PaymentStatus {
+  PENDING = 'pending',
+  SUCCEEDED = 'succeeded',
+  FAILED = 'failed',
+  EXPIRED = 'expired',
+  CANCELLED = 'cancelled',
 }
 
-export interface StripeCredentials {
-  publishableKey: string;
-  secretKey: string;
-  webhookSecret?: string;
-  environment: 'test' | 'live';
+// 決済リンク作成リクエスト
+export interface CreatePaymentLinkRequest {
+  amount: number
+  currency: string
+  description?: string
+  expiresAt?: Date
+  userPaymentConfigId: string
 }
 
-export interface PayPalCredentials {
-  clientId: string;
-  clientSecret: string;
-  environment: 'sandbox' | 'production';
+// 決済リンク作成レスポンス
+export interface CreatePaymentLinkResponse {
+  id: string
+  linkUrl: string
+  amount: number
+  currency: string
+  description?: string
+  status: PaymentStatus
+  expiresAt?: Date
+  createdAt: Date
 }
 
-export interface SquareCredentials {
-  applicationId: string;
-  accessToken: string;
-  environment: 'sandbox' | 'production';
+// 決済リンク詳細
+export interface PaymentLinkDetails {
+  id: string
+  userId: string
+  userPaymentConfigId: string
+  amount: number
+  currency: string
+  description?: string
+  status: PaymentStatus
+  stripePaymentIntentId?: string
+  linkUrl: string
+  expiresAt?: Date
+  completedAt?: Date
+  createdAt: Date
+  updatedAt: Date
+
+  // リレーション
+  userPaymentConfig: {
+    id: string
+    provider: PaymentService
+    displayName: string
+    isTestMode: boolean
+  }
 }
 
-export interface PayPayCredentials {
-  merchantId: string;
-  apiKey: string;
-  apiSecret: string;
-  environment: 'test' | 'production';
+// 決済リンク一覧アイテム
+export interface PaymentLinkListItem {
+  id: string
+  amount: number
+  currency: string
+  description?: string
+  status: PaymentStatus
+  linkUrl: string
+  expiresAt?: Date
+  completedAt?: Date
+  createdAt: Date
+
+  // 決済設定情報
+  paymentConfig: {
+    displayName: string
+    provider: PaymentService
+    isTestMode: boolean
+  }
 }
 
-export interface FincodeCredentials {
-  shopId: string;
-  apiKey: string;
-  environment: 'test' | 'live';
+// 決済統計情報
+export interface PaymentStats {
+  totalAmount: number
+  totalCount: number
+  succeededCount: number
+  pendingCount: number
+  failedCount: number
+  currency: string
 }
 
-export type PaymentCredentials = 
-  | StripeCredentials 
-  | PayPalCredentials 
-  | SquareCredentials 
-  | PayPayCredentials 
-  | FincodeCredentials;
-
-export interface PaymentRequest {
-  amount: number;
-  currency: string;
-  productName: string;
-  description?: string;
-  quantity?: number;
-  customerEmail?: string;
-  expiresAt?: string;
-  successUrl?: string;
-  cancelUrl?: string;
-  metadata?: Record<string, any>;
+// Stripe関連の型
+export interface StripePaymentResult {
+  success: boolean
+  paymentIntentId?: string
+  error?: string
 }
 
-export interface PaymentLinkResponse {
-  success: boolean;
-  url?: string;
-  shortUrl?: string;
-  qrCode?: string;
-  linkId?: string;
-  expiresAt?: string;
-  error?: string;
-  errorDetails?: any;
+// 決済フォームデータ
+export interface PaymentFormData {
+  amount: string
+  currency: string
+  description: string
+  expiresInHours: string
+  userPaymentConfigId: string
 }
 
-export interface PaymentLink {
-  id: string;
-  service: PaymentService;
-  url: string;
-  shortUrl?: string;
-  qrCode?: string;
-  amount: number;
-  currency: string;
-  productName: string;
-  description?: string;
-  customerEmail?: string;
-  expiresAt?: Date;
-  createdAt: Date;
-  metadata?: Record<string, any>;
+// 決済ページの状態
+export interface PaymentPageState {
+  loading: boolean
+  error?: string
+  paymentIntent?: {
+    id: string
+    clientSecret: string
+    status: string
+  }
 }
 
-export interface ApiValidationResponse {
-  isValid: boolean;
-  service: PaymentService;
-  environment: Environment;
-  error?: string;
-  details?: any;
+// Webhook イベント型
+export interface WebhookEvent {
+  id: string
+  type: string
+  data: {
+    object: any
+  }
+  created: number
 }
 
-// Zustand Store Types
-export interface PaymentStore {
-  selectedService: PaymentService | null;
-  credentials: PaymentCredentials | null;
-  paymentRequest: PaymentRequest | null;
-  generatedLink: PaymentLinkResponse | null;
-  isLoading: boolean;
-  error: string | null;
-  
-  // Actions
-  setSelectedService: (service: PaymentService) => void;
-  setCredentials: (credentials: PaymentCredentials) => void;
-  setPaymentRequest: (request: PaymentRequest) => void;
-  setGeneratedLink: (link: PaymentLinkResponse) => void;
-  setLoading: (loading: boolean) => void;
-  setError: (error: string | null) => void;
-  reset: () => void;
+// 決済結果通知
+export interface PaymentNotification {
+  linkId: string
+  status: PaymentStatus
+  paymentIntentId?: string
+  amount: number
+  currency: string
+  completedAt?: Date
+  error?: string
 }
