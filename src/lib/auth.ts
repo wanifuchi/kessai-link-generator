@@ -180,7 +180,7 @@ export async function createOrUpdateGoogleUser(profile: any) {
         data: {
           googleId: profile.sub,
           provider: 'google',
-          avatar: profile.picture,
+          image: profile.picture,
           emailVerified: profile.email_verified ? new Date() : null,
           name: profile.name || existingUser.name,
         }
@@ -193,7 +193,7 @@ export async function createOrUpdateGoogleUser(profile: any) {
           name: profile.name,
           googleId: profile.sub,
           provider: 'google',
-          avatar: profile.picture,
+          image: profile.picture,
           emailVerified: profile.email_verified ? new Date() : null,
         }
       })
