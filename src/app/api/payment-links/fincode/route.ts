@@ -157,10 +157,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Fincode決済の最新ステータスを取得
-    if (paymentLink.serviceId && paymentLink.status === 'pending') {
+    if (paymentLink.stripePaymentIntentId && paymentLink.status === 'pending') {
       try {
         const fincodeService = getFincodeService();
-        const fincodeStatus = await fincodeService.getPaymentStatus(paymentLink.serviceId);
+        const fincodeStatus = await fincodeService.getPaymentStatus(paymentLink.stripePaymentIntentId);
 
         // ステータスが変更されている場合は更新
         if (fincodeStatus.status !== 'pending') {
@@ -255,9 +255,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Fincode決済をキャンセル
-    if (paymentLink.serviceId) {
+    if (paymentLink.stripePaymentIntentId) {
       const fincodeService = getFincodeService();
-      const cancelResult = await fincodeService.cancelPayment(paymentLink.serviceId);
+      const cancelResult = await fincodeService.cancelPayment(paymentLink.stripePaymentIntentId);
 
       if (!cancelResult) {
         return NextResponse.json(
