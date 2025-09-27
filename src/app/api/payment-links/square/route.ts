@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         service: 'square',
         status: 'pending',
         linkUrl: squareResult.paymentUrl || '',
-        stripePaymentIntentId: squareResult.paymentId || ''
+        stripePaymentIntentId: squareResult.paymentId || '',
         description,
         metadata: metadata ? JSON.stringify(metadata) : undefined,
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24時間後
