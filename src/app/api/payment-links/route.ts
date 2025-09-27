@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authOptions'
 import prisma from '@/lib/prisma'
 import { createPaymentIntent } from '@/lib/payment'
-import { CreatePaymentLinkRequest, PaymentStatus } from '@/types/payment'
+import { CreatePaymentLinkRequest } from '@/types/payment'
 
 /**
  * IDを生成（cuidの代替として簡易実装）
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
         amount: Math.round(amount), // セント単位
         currency: currency.toLowerCase(),
         description: description,
-        status: PaymentStatus.PENDING,
+        status: 'pending',
         linkUrl: linkUrl,
         expiresAt: expirationDate,
       },

@@ -90,7 +90,7 @@ async function handlePaymentCaptured(eventData: any) {
           { id: orderId },
           { stripePaymentIntentId: paymentId },
         ],
-        service: 'fincode',
+        service: PaymentService.fincode,
       },
     });
 
@@ -116,7 +116,7 @@ async function handlePaymentCaptured(eventData: any) {
       data: {
         id: `fincode_tx_${paymentId}`,
         paymentLinkId: paymentLink.id,
-        service: 'fincode',
+        service: PaymentService.fincode,
         serviceTransactionId: paymentId,
         amount: amount || paymentLink.amount,
         currency: currency || paymentLink.currency,
@@ -154,7 +154,7 @@ async function handlePaymentAuthorized(eventData: any) {
           { id: orderId },
           { stripePaymentIntentId: paymentId },
         ],
-        service: 'fincode',
+        service: PaymentService.fincode,
       },
     });
 
@@ -198,7 +198,7 @@ async function handlePaymentFailed(eventData: any) {
           { id: orderId },
           { stripePaymentIntentId: paymentId },
         ],
-        service: 'fincode',
+        service: PaymentService.fincode,
       },
     });
 
@@ -242,7 +242,7 @@ async function handlePaymentCanceled(eventData: any) {
           { id: orderId },
           { stripePaymentIntentId: paymentId },
         ],
-        service: 'fincode',
+        service: PaymentService.fincode,
       },
     });
 

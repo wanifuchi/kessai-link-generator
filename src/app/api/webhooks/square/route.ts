@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSquareService } from '@/lib/square';
 import prisma from '@/lib/prisma';
+import { PaymentService } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -76,7 +77,7 @@ async function handlePaymentEvent(eventType: string, eventData: any) {
           { stripePaymentIntentId: paymentId },
           { stripePaymentIntentId: orderId },
         ],
-        service: 'square',
+        service: PaymentService.square,
       },
     });
 
@@ -124,7 +125,7 @@ async function handlePaymentEvent(eventType: string, eventData: any) {
         data: {
           id: `square_tx_${paymentId}`,
           paymentLinkId: paymentLink.id,
-          service: 'square',
+          service: PaymentService.square,
           serviceTransactionId: paymentId,
           amount: amount / 100, // Squareは最小単位なので100で割る
           currency: currency || paymentLink.currency,

@@ -62,8 +62,6 @@ export default function CredentialsForm() {
     message: string;
   } | null>(null);
 
-  if (!selectedService) return null;
-
   // Get schema based on selected service
   const getSchema = () => {
     switch (selectedService) {
@@ -88,6 +86,8 @@ export default function CredentialsForm() {
     resolver: zodResolver(getSchema()),
     mode: 'onChange',
   });
+
+  if (!selectedService) return null;
 
   const toggleSecret = (fieldName: string) => {
     setShowSecrets(prev => ({

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import PayPalService from '@/lib/paypal';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
+import { PaymentService } from '@prisma/client';
 
 // PayPal webhook イベント処理
 export async function POST(request: NextRequest) {
@@ -117,7 +116,7 @@ async function handleOrderApproved(event: any) {
           paymentLinkId: customId,
           amount: parseInt((parseFloat(event.resource.purchase_units[0].amount.value) * 100).toString()),
           currency: event.resource.purchase_units[0].amount.currency_code.toUpperCase(),
-          service: 'paypal',
+          service: PaymentService.paypal,
           serviceTransactionId: orderId,
           status: 'pending',
           metadata: {
@@ -160,7 +159,7 @@ async function handlePaymentCaptureCompleted(event: any) {
       await prisma.transaction.update({
         where: { id: transaction.id },
         data: {
-          status: 'completed',
+          status: 'succeeded',
           paidAt: new Date(),
           serviceTransactionId: captureId,
           customerEmail: event.resource.payer?.email_address,
@@ -178,7 +177,7 @@ async function handlePaymentCaptureCompleted(event: any) {
       await prisma.paymentLink.update({
         where: { id: transaction.paymentLinkId },
         data: {
-          status: 'completed',
+          status: 'succeeded',
         },
       });
     }
@@ -291,9 +290,9 @@ async function handlePaymentCaptureRefunded(event: any) {
           paymentLinkId: originalTransaction.paymentLinkId,
           amount: -parseInt((parseFloat(event.resource.amount.value) * 100).toString()), // 負の値で返金を表現
           currency: event.resource.amount.currency_code.toUpperCase(),
-          service: 'paypal',
+          service: PaymentService.paypal,
           serviceTransactionId: refundId,
-          status: 'completed',
+          status: 'succeeded',
           paidAt: new Date(),
           metadata: {
             refundId: refundId,

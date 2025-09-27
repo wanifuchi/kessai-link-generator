@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSquareService } from '@/lib/square';
 import prisma from '@/lib/prisma';
+import {
+  createStandardPaymentLink,
+  createSuccessResponse,
+  createErrorResponse,
+  mapToPaymentStatus,
+  findPaymentLinkByIdentifier,
+  type StandardizedPaymentLinkData
+} from '@/lib/payment-utils';
+import { PaymentService } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +25,7 @@ export async function POST(request: NextRequest) {
     // バリデーション
     if (!title || !amount || amount <= 0) {
       return NextResponse.json(
-        { success: false, error: 'タイトルと有効な金額が必要です' },
+        createErrorResponse('タイトルと有効な金額が必要です', PaymentService.square),
         { status: 400 }
       );
     }
@@ -36,56 +45,41 @@ export async function POST(request: NextRequest) {
 
     if (!squareResult.success) {
       return NextResponse.json(
-        { success: false, error: squareResult.error },
+        createErrorResponse(squareResult.error, PaymentService.square),
         { status: 400 }
       );
     }
 
-    // データベースに保存
-    const paymentLink = await prisma.paymentLink.create({
-      data: {
-        id: orderId,
-        userId: 'temp-user-id', // FIXME: 実際のユーザーIDが必要
-        userPaymentConfigId: 'temp-config-id', // FIXME: 実際の設定IDが必要
-        amount: Number(amount),
-        currency: currency.toUpperCase(),
-        service: 'square',
-        status: 'pending',
-        linkUrl: squareResult.paymentUrl || '',
-        stripePaymentIntentId: squareResult.paymentId || '',
-        description,
-        metadata: metadata ? JSON.stringify(metadata) : undefined,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24時間後
-      },
-    });
+    // 標準化されたデータ構造で決済リンクを作成
+    const paymentLinkData: StandardizedPaymentLinkData = {
+      id: orderId,
+      userId: 'temp-user-id', // FIXME: 実際のユーザーIDが必要
+      userPaymentConfigId: 'temp-config-id', // FIXME: 実際の設定IDが必要
+      amount: Number(amount),
+      currency: currency.toUpperCase(),
+      description: title,
+      status: 'pending',
+      linkUrl: squareResult.paymentUrl || '',
+      stripePaymentIntentId: squareResult.paymentId || '',
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24時間後
+      metadata: metadata ? metadata : undefined
+    };
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        id: paymentLink.id,
-        paymentUrl: paymentLink.linkUrl,
-        qrCodeUrl: `/api/qr-code?url=${encodeURIComponent(paymentLink.linkUrl)}`,
-        shareUrl: `${process.env.NEXTAUTH_URL}/p/${paymentLink.id}`,
-        service: 'square',
-        title: paymentLink.description,
-        amount: paymentLink.amount,
-        currency: paymentLink.currency,
-        status: paymentLink.status,
-        expiresAt: paymentLink.expiresAt,
-      },
-    });
+    const paymentLink = await createStandardPaymentLink(paymentLinkData);
+
+    return NextResponse.json(
+      createSuccessResponse(paymentLink, PaymentService.square)
+    );
 
   } catch (error) {
     console.error('Square決済リンク作成エラー:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Square決済リンクの作成に失敗しました'
-      },
+      createErrorResponse(
+        error instanceof Error ? error.message : 'Square決済リンクの作成に失敗しました',
+        PaymentService.square
+      ),
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -97,7 +91,7 @@ export async function GET(request: NextRequest) {
 
     if (!orderId && !paymentId) {
       return NextResponse.json(
-        { success: false, error: 'orderIdまたはpaymentIdが必要です' },
+        createErrorResponse('orderIdまたはpaymentIdが必要です', PaymentService.square),
         { status: 400 }
       );
     }
@@ -109,14 +103,12 @@ export async function GET(request: NextRequest) {
         where: { id: orderId },
       });
     } else if (paymentId) {
-      paymentLink = await prisma.paymentLink.findFirst({
-        where: { stripePaymentIntentId: paymentId },
-      });
+      paymentLink = await findPaymentLinkByIdentifier(paymentId, PaymentService.square);
     }
 
     if (!paymentLink) {
       return NextResponse.json(
-        { success: false, error: '決済リンクが見つかりません' },
+        createErrorResponse('決済リンクが見つかりません', PaymentService.square),
         { status: 404 }
       );
     }
@@ -129,11 +121,10 @@ export async function GET(request: NextRequest) {
 
         // ステータスが変更されている場合は更新
         if (squareStatus.status !== 'pending') {
+          const newStatus = mapToPaymentStatus(squareStatus.status, PaymentService.square);
           paymentLink = await prisma.paymentLink.update({
             where: { id: paymentLink.id },
-            data: {
-              status: squareStatus.status,
-            },
+            data: { status: newStatus },
           });
         }
       } catch (error) {
@@ -148,7 +139,7 @@ export async function GET(request: NextRequest) {
         title: paymentLink.description,
         amount: paymentLink.amount,
         currency: paymentLink.currency,
-        service: paymentLink.service,
+        service: PaymentService.square,
         status: paymentLink.status,
         paymentUrl: paymentLink.linkUrl,
         shareUrl: `${process.env.NEXTAUTH_URL}/p/${paymentLink.id}`,
@@ -163,13 +154,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Square決済リンク取得エラー:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Square決済リンクの取得に失敗しました'
-      },
+      createErrorResponse(
+        error instanceof Error ? error.message : 'Square決済リンクの取得に失敗しました',
+        PaymentService.square
+      ),
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

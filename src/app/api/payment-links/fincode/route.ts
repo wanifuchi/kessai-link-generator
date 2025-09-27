@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFincodeService } from '@/lib/fincode';
 import prisma from '@/lib/prisma';
+import {
+  createStandardPaymentLink,
+  createSuccessResponse,
+  createErrorResponse,
+  mapToPaymentStatus,
+  findPaymentLinkByIdentifier,
+  type StandardizedPaymentLinkData
+} from '@/lib/payment-utils';
+import { PaymentService } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +26,7 @@ export async function POST(request: NextRequest) {
     // バリデーション
     if (!title || !amount || amount <= 0) {
       return NextResponse.json(
-        { success: false, error: 'タイトルと有効な金額が必要です' },
+        createErrorResponse('タイトルと有効な金額が必要です', PaymentService.fincode),
         { status: 400 }
       );
     }
@@ -25,7 +34,7 @@ export async function POST(request: NextRequest) {
     // Fincodeは日本円のみ対応
     if (currency.toUpperCase() !== 'JPY') {
       return NextResponse.json(
-        { success: false, error: 'Fincodeは日本円（JPY）のみ対応しています' },
+        createErrorResponse('Fincodeは日本円（JPY）のみ対応しています', PaymentService.fincode),
         { status: 400 }
       );
     }
@@ -34,7 +43,7 @@ export async function POST(request: NextRequest) {
     const supportedMethods = ['card', 'konbini', 'bank_transfer', 'virtual_account'];
     if (!supportedMethods.includes(paymentMethod)) {
       return NextResponse.json(
-        { success: false, error: `サポートされていない決済方法です: ${paymentMethod}` },
+        createErrorResponse(`サポートされていない決済方法です: ${paymentMethod}`, PaymentService.fincode),
         { status: 400 }
       );
     }
@@ -59,68 +68,56 @@ export async function POST(request: NextRequest) {
 
     if (!fincodeResult.success) {
       return NextResponse.json(
-        { success: false, error: fincodeResult.error },
+        createErrorResponse(fincodeResult.error, PaymentService.fincode),
         { status: 400 }
       );
     }
 
-    // データベースに保存
-    const paymentLink = await prisma.paymentLink.create({
-      data: {
-        id: orderId,
-        userId: 'temp-user-id', // FIXME: 実際のユーザーIDが必要
-        userPaymentConfigId: 'temp-config-id', // FIXME: 実際の設定IDが必要
-        description: title || description,
-        amount: Number(amount),
-        currency: 'JPY',
-        status: 'pending',
-        linkUrl: fincodeResult.paymentUrl || '',
-        metadata: metadata ? JSON.stringify({
-          ...metadata,
-          paymentMethod: fincodeResult.paymentMethod,
-          title,
-        }) : JSON.stringify({
-          paymentMethod: fincodeResult.paymentMethod,
-          title,
-        }),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7日間（コンビニ決済等を考慮）
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        id: paymentLink.id,
-        paymentUrl: paymentLink.linkUrl,
-        qrCodeUrl: `/api/qr-code?url=${encodeURIComponent(paymentLink.linkUrl)}`,
-        shareUrl: `${process.env.NEXTAUTH_URL}/p/${paymentLink.id}`,
-        service: 'fincode',
-        title: paymentLink.description,
-        amount: paymentLink.amount,
-        currency: paymentLink.currency,
-        status: paymentLink.status,
+    // 標準化されたデータ構造で決済リンクを作成
+    const paymentLinkData: StandardizedPaymentLinkData = {
+      id: orderId,
+      userId: 'temp-user-id', // FIXME: 実際のユーザーIDが必要
+      userPaymentConfigId: 'temp-config-id', // FIXME: 実際の設定IDが必要
+      amount: Number(amount),
+      currency: 'JPY',
+      description: title,
+      status: 'pending',
+      linkUrl: fincodeResult.paymentUrl || '',
+      stripePaymentIntentId: fincodeResult.paymentId || '',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7日間（コンビニ決済等を考慮）
+      metadata: metadata ? {
+        ...metadata,
         paymentMethod: fincodeResult.paymentMethod,
-        expiresAt: paymentLink.expiresAt,
+        title,
+      } : {
+        paymentMethod: fincodeResult.paymentMethod,
+        title,
+      }
+    };
+
+    const paymentLink = await createStandardPaymentLink(paymentLinkData);
+
+    return NextResponse.json(
+      createSuccessResponse(paymentLink, PaymentService.fincode, {
+        paymentMethod: fincodeResult.paymentMethod,
         supportedMethods: {
           card: 'クレジットカード決済',
           konbini: 'コンビニ決済',
           bank_transfer: '銀行振込',
           virtual_account: 'バーチャル口座',
         },
-      },
-    });
+      })
+    );
 
   } catch (error) {
     console.error('Fincode決済リンク作成エラー:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Fincode決済リンクの作成に失敗しました'
-      },
+      createErrorResponse(
+        error instanceof Error ? error.message : 'Fincode決済リンクの作成に失敗しました',
+        PaymentService.fincode
+      ),
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -132,7 +129,7 @@ export async function GET(request: NextRequest) {
 
     if (!orderId && !paymentId) {
       return NextResponse.json(
-        { success: false, error: 'orderIdまたはpaymentIdが必要です' },
+        createErrorResponse('orderIdまたはpaymentIdが必要です', PaymentService.fincode),
         { status: 400 }
       );
     }
@@ -144,14 +141,12 @@ export async function GET(request: NextRequest) {
         where: { id: orderId },
       });
     } else if (paymentId) {
-      paymentLink = await prisma.paymentLink.findFirst({
-        where: { stripePaymentIntentId: paymentId },
-      });
+      paymentLink = await findPaymentLinkByIdentifier(paymentId, PaymentService.fincode);
     }
 
     if (!paymentLink) {
       return NextResponse.json(
-        { success: false, error: '決済リンクが見つかりません' },
+        createErrorResponse('決済リンクが見つかりません', PaymentService.fincode),
         { status: 404 }
       );
     }
@@ -164,24 +159,10 @@ export async function GET(request: NextRequest) {
 
         // ステータスが変更されている場合は更新
         if (fincodeStatus.status !== 'pending') {
-          // fincodeステータスをPrisma PaymentStatusにマッピング
-          let prismaStatus: string;
-          switch (fincodeStatus.status) {
-            case 'completed':
-              prismaStatus = 'succeeded';
-              break;
-            case 'canceled':
-              prismaStatus = 'cancelled';
-              break;
-            default:
-              prismaStatus = fincodeStatus.status;
-          }
-
+          const newStatus = mapToPaymentStatus(fincodeStatus.status, PaymentService.fincode);
           paymentLink = await prisma.paymentLink.update({
             where: { id: paymentLink.id },
-            data: {
-              status: prismaStatus as any,
-            },
+            data: { status: newStatus },
           });
         }
       } catch (error) {
@@ -200,7 +181,7 @@ export async function GET(request: NextRequest) {
         title: paymentLink.description,
         amount: paymentLink.amount,
         currency: paymentLink.currency,
-        service: 'fincode',
+        service: PaymentService.fincode,
         status: paymentLink.status,
         paymentUrl: paymentLink.linkUrl,
         shareUrl: `${process.env.NEXTAUTH_URL}/p/${paymentLink.id}`,
@@ -216,14 +197,12 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Fincode決済リンク取得エラー:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Fincode決済リンクの取得に失敗しました'
-      },
+      createErrorResponse(
+        error instanceof Error ? error.message : 'Fincode決済リンクの取得に失敗しました',
+        PaymentService.fincode
+      ),
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -236,7 +215,7 @@ export async function DELETE(request: NextRequest) {
 
     if (!orderId && !paymentId) {
       return NextResponse.json(
-        { success: false, error: 'orderIdまたはpaymentIdが必要です' },
+        createErrorResponse('orderIdまたはpaymentIdが必要です', PaymentService.fincode),
         { status: 400 }
       );
     }
@@ -248,21 +227,19 @@ export async function DELETE(request: NextRequest) {
         where: { id: orderId },
       });
     } else if (paymentId) {
-      paymentLink = await prisma.paymentLink.findFirst({
-        where: { stripePaymentIntentId: paymentId },
-      });
+      paymentLink = await findPaymentLinkByIdentifier(paymentId, PaymentService.fincode);
     }
 
     if (!paymentLink) {
       return NextResponse.json(
-        { success: false, error: '決済リンクが見つかりません' },
+        createErrorResponse('決済リンクが見つかりません', PaymentService.fincode),
         { status: 404 }
       );
     }
 
     if (paymentLink.status === 'succeeded') {
       return NextResponse.json(
-        { success: false, error: '完了済みの決済はキャンセルできません' },
+        createErrorResponse('完了済みの決済はキャンセルできません', PaymentService.fincode),
         { status: 400 }
       );
     }
@@ -274,7 +251,7 @@ export async function DELETE(request: NextRequest) {
 
       if (!cancelResult) {
         return NextResponse.json(
-          { success: false, error: 'Fincode決済のキャンセルに失敗しました' },
+          createErrorResponse('Fincode決済のキャンセルに失敗しました', PaymentService.fincode),
           { status: 400 }
         );
       }
@@ -283,9 +260,7 @@ export async function DELETE(request: NextRequest) {
     // データベースを更新
     await prisma.paymentLink.update({
       where: { id: paymentLink.id },
-      data: {
-        status: 'cancelled',
-      },
+      data: { status: 'cancelled' },
     });
 
     return NextResponse.json({
@@ -296,13 +271,11 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error('Fincode決済キャンセルエラー:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Fincode決済のキャンセルに失敗しました'
-      },
+      createErrorResponse(
+        error instanceof Error ? error.message : 'Fincode決済のキャンセルに失敗しました',
+        PaymentService.fincode
+      ),
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

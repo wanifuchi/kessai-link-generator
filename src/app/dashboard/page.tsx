@@ -38,7 +38,7 @@ interface PaymentLink {
   service: string;
   paymentUrl: string;
   qrCodeUrl?: string;
-  status: 'ACTIVE' | 'EXPIRED' | 'DISABLED' | 'COMPLETED';
+  status: 'pending' | 'succeeded' | 'failed' | 'cancelled' | 'expired';
   createdAt: string;
   expiresAt?: string;
   transactions: {
@@ -181,13 +181,14 @@ export default function DashboardPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      ACTIVE: { variant: 'default' as const, icon: Clock, text: 'アクティブ' },
-      COMPLETED: { variant: 'default' as const, icon: CheckCircle, text: '完了' },
-      EXPIRED: { variant: 'secondary' as const, icon: XCircle, text: '期限切れ' },
-      DISABLED: { variant: 'destructive' as const, icon: AlertCircle, text: '無効' },
+      pending: { variant: 'default' as const, icon: Clock, text: '処理中' },
+      succeeded: { variant: 'default' as const, icon: CheckCircle, text: '完了' },
+      failed: { variant: 'destructive' as const, icon: XCircle, text: '失敗' },
+      cancelled: { variant: 'secondary' as const, icon: AlertCircle, text: 'キャンセル' },
+      expired: { variant: 'secondary' as const, icon: XCircle, text: '期限切れ' },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.ACTIVE;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     const Icon = config.icon;
 
     return (
@@ -640,10 +641,11 @@ export default function DashboardPage() {
                 {stats?.linksByStatus && stats.linksByStatus.length > 0 ? (
                   stats.linksByStatus.map((item) => {
                     const statusConfig = {
-                      ACTIVE: { color: 'bg-green-500', label: 'アクティブ' },
-                      COMPLETED: { color: 'bg-blue-500', label: '完了' },
-                      EXPIRED: { color: 'bg-gray-500', label: '期限切れ' },
-                      DISABLED: { color: 'bg-red-500', label: '無効' },
+                      pending: { color: 'bg-yellow-500', label: '処理中' },
+                      succeeded: { color: 'bg-green-500', label: '完了' },
+                      failed: { color: 'bg-red-500', label: '失敗' },
+                      cancelled: { color: 'bg-gray-500', label: 'キャンセル' },
+                      expired: { color: 'bg-gray-500', label: '期限切れ' },
                     };
                     const config = statusConfig[item.status as keyof typeof statusConfig] || { color: 'bg-gray-500', label: item.status };
 

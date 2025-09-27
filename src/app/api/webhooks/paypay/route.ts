@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPayPayService } from '@/lib/paypay';
 import prisma from '@/lib/prisma';
+import { PaymentService } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -78,7 +79,7 @@ async function handlePaymentCompleted(eventData: any) {
           { id: merchantPaymentId },
           { stripePaymentIntentId: paymentId },
         ],
-        service: 'paypay',
+        service: PaymentService.paypay,
       },
     });
 
@@ -104,7 +105,7 @@ async function handlePaymentCompleted(eventData: any) {
       data: {
         id: `paypay_tx_${paymentId}`,
         paymentLinkId: paymentLink.id,
-        service: 'paypay',
+        service: PaymentService.paypay,
         serviceTransactionId: paymentId,
         amount: amount || paymentLink.amount,
         currency: currency || paymentLink.currency,
@@ -143,7 +144,7 @@ async function handlePaymentFailed(eventData: any) {
           { id: merchantPaymentId },
           { stripePaymentIntentId: paymentId },
         ],
-        service: 'paypay',
+        service: PaymentService.paypay,
       },
     });
 
@@ -187,7 +188,7 @@ async function handlePaymentCanceled(eventData: any) {
           { id: merchantPaymentId },
           { stripePaymentIntentId: paymentId },
         ],
-        service: 'paypay',
+        service: PaymentService.paypay,
       },
     });
 
@@ -231,7 +232,7 @@ async function handlePaymentExpired(eventData: any) {
           { id: merchantPaymentId },
           { stripePaymentIntentId: codeId },
         ],
-        service: 'paypay',
+        service: PaymentService.paypay,
       },
     });
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import Stripe from 'stripe'
 import prisma from '@/lib/prisma'
-import { PaymentStatus } from '@/types/payment'
+import { PaymentStatus } from '@prisma/client'
 
 /**
  * Stripe Webhook処理
@@ -101,7 +101,7 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
     }
 
     // 既に処理済みの場合はスキップ
-    if (paymentLink.status === PaymentStatus.SUCCEEDED) {
+    if (paymentLink.status === 'succeeded') {
       console.log('決済は既に成功として処理済み:', linkId)
       return
     }
@@ -110,7 +110,7 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
     await prisma.paymentLink.update({
       where: { id: linkId },
       data: {
-        status: PaymentStatus.SUCCEEDED,
+        status: 'succeeded',
         completedAt: new Date(),
         stripePaymentIntentId: paymentIntent.id,
       },
@@ -146,7 +146,7 @@ async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
     }
 
     // 既に処理済みの場合はスキップ
-    if (paymentLink.status === PaymentStatus.FAILED) {
+    if (paymentLink.status === 'failed') {
       console.log('決済は既に失敗として処理済み:', linkId)
       return
     }
@@ -155,7 +155,7 @@ async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
     await prisma.paymentLink.update({
       where: { id: linkId },
       data: {
-        status: PaymentStatus.FAILED,
+        status: 'failed',
         stripePaymentIntentId: paymentIntent.id,
       },
     })
@@ -190,7 +190,7 @@ async function handlePaymentCanceled(paymentIntent: Stripe.PaymentIntent) {
     }
 
     // 既に処理済みの場合はスキップ
-    if (paymentLink.status === PaymentStatus.CANCELLED) {
+    if (paymentLink.status === 'cancelled') {
       console.log('決済は既にキャンセルとして処理済み:', linkId)
       return
     }
@@ -199,7 +199,7 @@ async function handlePaymentCanceled(paymentIntent: Stripe.PaymentIntent) {
     await prisma.paymentLink.update({
       where: { id: linkId },
       data: {
-        status: PaymentStatus.CANCELLED,
+        status: 'cancelled',
         stripePaymentIntentId: paymentIntent.id,
       },
     })
