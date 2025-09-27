@@ -49,3 +49,8 @@ secrets.json
 # Database
 *.db
 *.sqlite
+
+# Temporary and old files
+node_modules_old/
+cookies.txt
+*.ts.ts
