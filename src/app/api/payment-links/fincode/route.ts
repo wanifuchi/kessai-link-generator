@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFincodeService } from '@/lib/fincode';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -70,14 +68,13 @@ export async function POST(request: NextRequest) {
     const paymentLink = await prisma.paymentLink.create({
       data: {
         id: orderId,
-        title,
+        userId: 'temp-user-id', // FIXME: 実際のユーザーIDが必要
+        userPaymentConfigId: 'temp-config-id', // FIXME: 実際の設定IDが必要
+        description: title || description,
         amount: Number(amount),
         currency: 'JPY',
-        service: 'fincode',
         status: 'pending',
-        paymentUrl: fincodeResult.paymentUrl || '',
-        serviceId: fincodeResult.paymentId || '',
-        description,
+        linkUrl: fincodeResult.paymentUrl || '',
         metadata: metadata ? JSON.stringify({
           ...metadata,
           paymentMethod: fincodeResult.paymentMethod,
