@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/app/providers'
 import { useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -50,7 +51,7 @@ export default function ProfilePage() {
 }
 
 function ProfileContent() {
-  const { user, loading, signOut } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -74,19 +75,108 @@ function ProfileContent() {
   }
 
   const handleSignOut = async () => {
+    console.log('🚀 プロフィールページログアウト開始')
+
     setIsLoggingOut(true)
     try {
-      await signOut()
+      // 1. 手動セッション削除API呼び出し（NextAuth.jsセッション用）
+      try {
+        console.log('📡 NextAuth.js手動セッション削除API呼び出し中...')
+        const clearResponse = await fetch('/api/auth/clear-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        })
+
+        if (clearResponse.ok) {
+          const clearResult = await clearResponse.json()
+          console.log('✅ NextAuth.js手動セッション削除成功:', clearResult)
+        } else {
+          console.warn('⚠️ NextAuth.js手動セッション削除レスポンス異常:', clearResponse.status)
+        }
+      } catch (clearError) {
+        console.error('❌ NextAuth.js手動セッション削除エラー:', clearError)
+      }
+
+      // 2. JWTトークン削除API呼び出し
+      try {
+        console.log('🔑 JWTトークン削除API呼び出し中...')
+        const jwtSignoutResponse = await fetch('/api/auth/signout-jwt', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        })
+
+        if (jwtSignoutResponse.ok) {
+          const jwtResult = await jwtSignoutResponse.json()
+          console.log('✅ JWTトークン削除成功:', jwtResult)
+        } else {
+          console.warn('⚠️ JWTトークン削除レスポンス異常:', jwtSignoutResponse.status)
+        }
+      } catch (jwtError) {
+        console.error('❌ JWTトークン削除エラー:', jwtError)
+      }
+
+      // 3. NextAuth標準サインアウト
+      try {
+        console.log('🔐 NextAuth サインアウト実行中...')
+        await signOut({ redirect: false })
+        console.log('✅ NextAuth サインアウト完了')
+      } catch (signOutError) {
+        console.error('❌ NextAuth サインアウト失敗:', signOutError)
+      }
+
+      // 4. 強制リダイレクト
+      console.log('🔄 サインインページにリダイレクト')
+      window.location.href = `/auth/signin?t=${Date.now()}`
+
     } catch (error) {
-      console.error('ログアウトエラー:', error)
+      console.error('❌ ログアウト処理でエラー:', error)
+      // 緊急時の強制リダイレクト
+      window.location.href = `/auth/signin?t=${Date.now()}`
+    } finally {
       setIsLoggingOut(false)
     }
   }
 
   const handleDeleteAccount = async () => {
-    // TODO: アカウント削除機能の実装
-    alert('アカウント削除機能は現在準備中です')
-    setShowDeleteConfirm(false)
+    console.log('🗑️ アカウント削除処理開始')
+
+    try {
+      const deleteResponse = await fetch('/api/auth/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      })
+
+      if (deleteResponse.ok) {
+        const result = await deleteResponse.json()
+        console.log('✅ アカウント削除成功:', result)
+
+        // 削除成功メッセージを表示
+        alert('アカウントが正常に削除されました。ご利用ありがとうございました。')
+
+        // サインインページにリダイレクト
+        window.location.href = `/auth/signin?deleted=true&t=${Date.now()}`
+
+      } else {
+        const errorResult = await deleteResponse.json()
+        console.error('❌ アカウント削除エラー:', errorResult)
+        alert(`アカウント削除に失敗しました: ${errorResult.error || '不明なエラー'}`)
+      }
+
+    } catch (error) {
+      console.error('❌ アカウント削除リクエストエラー:', error)
+      alert('アカウント削除リクエストに失敗しました。ネットワーク接続を確認してください。')
+    } finally {
+      setShowDeleteConfirm(false)
+    }
   }
 
   const formatDate = (date: string) => {
