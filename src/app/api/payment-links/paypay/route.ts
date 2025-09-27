@@ -59,14 +59,14 @@ export async function POST(request: NextRequest) {
     const paymentLink = await prisma.paymentLink.create({
       data: {
         id: orderId,
-        title,
+        userId: 'temp-user-id', // FIXME: 実際のユーザーIDが必要
+        userPaymentConfigId: 'temp-config-id', // FIXME: 実際の設定IDが必要
+        description: title,
         amount: Number(amount),
         currency: 'JPY',
-        service: 'paypay',
         status: 'pending',
-        paymentUrl: paypayResult.paymentUrl || '',
-        serviceId: paypayResult.paymentId || '',
-        description,
+        linkUrl: paypayResult.paymentUrl || '',
+        stripePaymentIntentId: paypayResult.paymentId || '',
         metadata: metadata ? JSON.stringify({
           ...metadata,
           qrCodeData: paypayResult.qrCodeData, // QRコード画像データを保存
