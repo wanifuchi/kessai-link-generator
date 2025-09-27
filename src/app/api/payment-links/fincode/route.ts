@@ -164,10 +164,23 @@ export async function GET(request: NextRequest) {
 
         // ステータスが変更されている場合は更新
         if (fincodeStatus.status !== 'pending') {
+          // fincodeステータスをPrisma PaymentStatusにマッピング
+          let prismaStatus: string;
+          switch (fincodeStatus.status) {
+            case 'completed':
+              prismaStatus = 'succeeded';
+              break;
+            case 'canceled':
+              prismaStatus = 'cancelled';
+              break;
+            default:
+              prismaStatus = fincodeStatus.status;
+          }
+
           paymentLink = await prisma.paymentLink.update({
             where: { id: paymentLink.id },
             data: {
-              status: fincodeStatus.status,
+              status: prismaStatus as any,
             },
           });
         }
