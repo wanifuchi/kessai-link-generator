@@ -81,7 +81,7 @@ function PaymentSuccessContent() {
       if (data.success && data.data) {
         const paymentLink = data.data;
         const completedTransaction = paymentLink.transactions.find(
-          (t: any) => t.status === 'COMPLETED'
+          (t: any) => t.status === 'completed'
         );
 
         if (completedTransaction) {

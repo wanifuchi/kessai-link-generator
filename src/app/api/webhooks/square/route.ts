@@ -128,7 +128,7 @@ async function handlePaymentEvent(eventType: string, eventData: any) {
           serviceTransactionId: paymentId,
           amount: amount / 100, // Squareは最小単位なので100で割る
           currency: currency || paymentLink.currency,
-          status: 'COMPLETED',
+          status: 'completed',
           paidAt: new Date(),
           metadata: JSON.stringify({
             eventType,

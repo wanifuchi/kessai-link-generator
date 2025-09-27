@@ -108,7 +108,7 @@ async function handlePaymentCompleted(eventData: any) {
         serviceTransactionId: paymentId,
         amount: amount || paymentLink.amount,
         currency: currency || paymentLink.currency,
-        status: 'COMPLETED',
+        status: 'completed',
         paidAt: new Date(),
         metadata: JSON.stringify({
           eventType: 'payment.completed',
