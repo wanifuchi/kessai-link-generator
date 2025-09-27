@@ -15,12 +15,10 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/profile')
   ) {
     try {
-      // NextAuth.jsセッションをチェック（キャッシュ無効化）
+      // NextAuth.jsセッションをチェック
       const nextAuthToken = await getToken({
         req: request,
-        secret: process.env.NEXTAUTH_SECRET,
-        // キャッシュを無効化してリアルタイムチェック
-        salt: process.env.NODE_ENV === 'development' ? Date.now().toString() : undefined
+        secret: process.env.NEXTAUTH_SECRET
       })
 
       console.log('🔍 NextAuth token check:', {
