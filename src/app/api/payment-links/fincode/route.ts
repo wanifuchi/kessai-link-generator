@@ -284,7 +284,7 @@ export async function DELETE(request: NextRequest) {
     await prisma.paymentLink.update({
       where: { id: paymentLink.id },
       data: {
-        status: 'canceled',
+        status: 'cancelled',
       },
     });
 
