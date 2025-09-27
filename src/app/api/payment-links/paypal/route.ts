@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
             currency: capture.amount.currency_code.toUpperCase(),
             service: 'paypal',
             serviceTransactionId: capture.id,
-            status: 'completed',
+            status: 'succeeded',
             paidAt: new Date(),
             customerEmail: captureResult.payer?.email_address,
             customerName: `${captureResult.payer?.name?.given_name || ''} ${captureResult.payer?.name?.surname || ''}`.trim(),
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
         await prisma.paymentLink.update({
           where: { id: paymentLinkId },
           data: {
-            status: 'completed',
+            status: 'succeeded',
           },
         });
 
