@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import Stripe from 'stripe'
-import { prisma } from '@/lib/prisma'
+import prisma from '@/lib/prisma'
 import { PaymentStatus } from '@/types/payment'
 
 /**

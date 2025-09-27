@@ -1,5 +1,5 @@
 import { createStripeClient, convertToStripeAmount, generateIdempotencyKey } from './stripe'
-import { prisma } from './prisma'
+import prisma from './prisma'
 import { PaymentService } from '@prisma/client'
 
 export interface CreatePaymentIntentRequest {

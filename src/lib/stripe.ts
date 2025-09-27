@@ -1,5 +1,5 @@
 import Stripe from 'stripe'
-import { decrypt } from './encryption'
+import { decryptData } from './encryption'
 import { StripeConfig } from '@/types/paymentConfig'
 
 /**
@@ -7,7 +7,7 @@ import { StripeConfig } from '@/types/paymentConfig'
  */
 export function createStripeClient(encryptedConfig: string): Stripe {
   try {
-    const config = JSON.parse(decrypt(encryptedConfig)) as StripeConfig
+    const config = decryptData<StripeConfig>(encryptedConfig)
 
     return new Stripe(config.secretKey, {
       apiVersion: '2024-06-20',
@@ -23,7 +23,7 @@ export function createStripeClient(encryptedConfig: string): Stripe {
  */
 export function getStripePublishableKey(encryptedConfig: string): string {
   try {
-    const config = JSON.parse(decrypt(encryptedConfig)) as StripeConfig
+    const config = decryptData<StripeConfig>(encryptedConfig)
     return config.publishableKey
   } catch (error) {
     throw new Error('Stripe公開キーの取得に失敗しました')
@@ -35,7 +35,7 @@ export function getStripePublishableKey(encryptedConfig: string): string {
  */
 export function getWebhookSecret(encryptedConfig: string): string | undefined {
   try {
-    const config = JSON.parse(decrypt(encryptedConfig)) as StripeConfig
+    const config = decryptData<StripeConfig>(encryptedConfig)
     return config.webhookSecret
   } catch (error) {
     throw new Error('Webhookシークレットの取得に失敗しました')
