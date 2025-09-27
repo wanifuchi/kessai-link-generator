@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       linkId: paymentLink.id,
       amount: paymentLink.amount,
       currency: paymentLink.currency,
-      description: paymentLink.description,
+      description: paymentLink.description || undefined,
       userPaymentConfigId: paymentLink.userPaymentConfigId,
     })
 
