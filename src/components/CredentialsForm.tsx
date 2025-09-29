@@ -204,7 +204,7 @@ export default function CredentialsForm() {
         ]
       },
     };
-    return instructions[selectedService];
+    return instructions[selectedService as keyof typeof instructions];
   };
 
   const instructions = getServiceInstructions();
