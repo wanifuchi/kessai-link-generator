@@ -45,7 +45,6 @@ export async function GET(request: NextRequest) {
         include: {
           paymentLink: {
             select: {
-              title: true,
               amount: true,
               currency: true,
             }
@@ -104,7 +103,6 @@ export async function POST(request: NextRequest) {
       include: {
         paymentLink: {
           select: {
-            title: true,
             amount: true,
             currency: true,
           }
@@ -116,7 +114,7 @@ export async function POST(request: NextRequest) {
     if (validatedData.status === 'completed') {
       await prisma.paymentLink.update({
         where: { id: validatedData.paymentLinkId },
-        data: { status: 'completed' }
+        data: { status: 'succeeded' }
       });
     }
     

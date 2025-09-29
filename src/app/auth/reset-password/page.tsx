@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/app/providers'
@@ -42,25 +42,7 @@ function ResetPasswordForm() {
 
   const token = searchParams.get('token')
 
-  // 既にログイン済みの場合はダッシュボードへリダイレクト
-  useEffect(() => {
-    if (!loading && user) {
-      router.push('/dashboard')
-      return
-    }
-
-    // トークンが必要
-    if (!token) {
-      setError('無効なリセットリンクです')
-      setTokenValid(false)
-      return
-    }
-
-    // トークンの検証
-    validateToken()
-  }, [user, loading, router, token])
-
-  const validateToken = async () => {
+  const validateToken = useCallback(async () => {
     if (!token) return
 
     try {
@@ -85,7 +67,25 @@ function ResetPasswordForm() {
       setTokenValid(false)
       setError('トークンの検証に失敗しました')
     }
-  }
+  }, [token])
+
+  // 既にログイン済みの場合はダッシュボードへリダイレクト
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/dashboard')
+      return
+    }
+
+    // トークンが必要
+    if (!token) {
+      setError('無効なリセットリンクです')
+      setTokenValid(false)
+      return
+    }
+
+    // トークンの検証
+    validateToken()
+  }, [user, loading, router, token, validateToken])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

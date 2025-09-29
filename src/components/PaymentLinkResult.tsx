@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,9 +44,29 @@ export default function PaymentLinkResult() {
     if (selectedService && credentials && paymentRequest && !generatedLink?.success && !isLoading) {
       generatePaymentLink();
     }
-  }, [selectedService, credentials, paymentRequest]);
+  }, [selectedService, credentials, paymentRequest, generatePaymentLink, generatedLink?.success, isLoading]);
 
-  const generatePaymentLink = async () => {
+  const generateQRCode = useCallback(async (url: string) => {
+    if (!url) return;
+
+    setIsGeneratingQR(true);
+    try {
+      const response = await fetch(`/api/qr-code?url=${encodeURIComponent(url)}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setQrCode(result.qrCode);
+      } else {
+        console.error('QR code generation failed:', result.error);
+      }
+    } catch (error) {
+      console.error('QR code generation error:', error);
+    } finally {
+      setIsGeneratingQR(false);
+    }
+  }, []);
+
+  const generatePaymentLink = useCallback(async () => {
     if (!selectedService || !credentials || !paymentRequest) return;
 
     setLoading(true);
@@ -88,37 +109,8 @@ export default function PaymentLinkResult() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedService, credentials, paymentRequest, setLoading, setError, updateGeneratedLink, generateQRCode]);
 
-  const generateQRCode = async (url: string) => {
-    if (!url) return;
-
-    setIsGeneratingQR(true);
-    
-    try {
-      const response = await fetch('/api/qr-code', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          url,
-          size: 300,
-          margin: 2,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setQrCode(result.data.qrCode);
-      }
-    } catch (error) {
-      console.error('QR code generation error:', error);
-    } finally {
-      setIsGeneratingQR(false);
-    }
-  };
 
   const handleCopy = async (text: string, type: string) => {
     const copySuccess = await copyToClipboard(text);
@@ -366,11 +358,16 @@ export default function PaymentLinkResult() {
                   </div>
                 </div>
               ) : qrCode ? (
-                <img
-                  src={qrCode}
-                  alt="Payment QR Code"
-                  className="w-full h-full object-contain"
-                />
+                <div className="relative w-full h-full">
+                  <Image
+                    src={qrCode}
+                    alt="Payment QR Code"
+                    fill
+                    className="object-contain"
+                    sizes="256px"
+                    unoptimized
+                  />
+                </div>
               ) : (
                 <div className="flex items-center justify-center h-full">
                   <Button 

@@ -307,7 +307,7 @@ export class PayPalService {
       switch (orderDetails.status) {
         case 'APPROVED':
         case 'COMPLETED':
-          status = 'succeeded';
+          status = 'completed';
           break;
         case 'VOIDED':
         case 'CANCELLED':

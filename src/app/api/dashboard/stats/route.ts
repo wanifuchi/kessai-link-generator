@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
 import prisma, { withSession } from '@/lib/prisma';
 
 // Dynamic server usage for authentication
@@ -58,11 +56,11 @@ interface DashboardStats {
   }>;
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     return await withSession(
-      () => getServerSession(authOptions),
-      async () => {
+      request,
+      async (req, session) => {
         const { searchParams } = new URL(request.url);
         const dateRange = searchParams.get('range') || '30'; // デフォルト30日
         const daysAgo = parseInt(dateRange);
@@ -295,8 +293,7 @@ export async function GET(request: NextRequest) {
           dailyStats
         };
 
-        // セッション情報を取得してレスポンスに含める
-        const session = await getServerSession(authOptions);
+        // セッション情報はwithSessionから取得済み
 
         return NextResponse.json({
           success: true,

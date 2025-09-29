@@ -77,7 +77,12 @@ async function handlePaymentEvent(eventType: string, eventData: any) {
           { stripePaymentIntentId: paymentId },
           { stripePaymentIntentId: orderId },
         ],
-        service: PaymentService.square,
+        userPaymentConfig: {
+          provider: PaymentService.square,
+        },
+      },
+      include: {
+        userPaymentConfig: true,
       },
     });
 
@@ -116,6 +121,7 @@ async function handlePaymentEvent(eventType: string, eventData: any) {
       data: {
         status: newStatus as 'pending' | 'succeeded' | 'failed' | 'cancelled' | 'expired',
         stripePaymentIntentId: paymentId, // 最新のPayment IDで更新
+        ...(completedAt && { completedAt }),
       },
     });
 
@@ -133,7 +139,7 @@ async function handlePaymentEvent(eventType: string, eventData: any) {
         await prisma.transaction.create({
           data: {
             paymentLinkId: paymentLink.id,
-            service: PaymentService.square,
+            service: 'square',
             serviceTransactionId: paymentId,
             amount: amount, // Squareは既にセント単位で保存されている
             currency: currency || paymentLink.currency,

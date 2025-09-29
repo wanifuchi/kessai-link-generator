@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
     }
 
     return await withSession(
-      () => getServerSession(authOptions),
-      async () => {
+      request,
+      async (req, session) => {
         const { searchParams } = new URL(request.url);
         const service = searchParams.get('service');
         const environment = searchParams.get('environment');
@@ -48,7 +48,6 @@ export async function GET(request: NextRequest) {
           orderBy: { createdAt: 'desc' },
           select: {
             id: true,
-            service: true,
             environment: true,
             publishableKey: true,
             // 秘密キーは除外してセキュリティを確保
@@ -69,8 +68,7 @@ export async function GET(request: NextRequest) {
             : null
         }));
 
-        // セッション情報を取得してレスポンスに含める
-        const session = await getServerSession(authOptions);
+        // セッション情報はwithSessionから取得済み
 
         return NextResponse.json({
           success: true,
@@ -127,8 +125,8 @@ export async function POST(request: NextRequest) {
     }
 
     return await withSession(
-      () => getServerSession(authOptions),
-      async () => {
+      request,
+      async (req, session) => {
         body = await request.json();
         console.log('API設定作成リクエスト:', body);
 
@@ -173,7 +171,6 @@ export async function POST(request: NextRequest) {
             },
             select: {
               id: true,
-              service: true,
               environment: true,
               publishableKey: true,
               // 秘密キーは返さない

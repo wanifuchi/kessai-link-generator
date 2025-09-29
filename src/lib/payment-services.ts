@@ -122,7 +122,7 @@ export function isServiceAvailable(serviceId: PaymentService): boolean {
     case 'paypay':
       return !!(process.env.PAYPAY_MERCHANT_ID && process.env.PAYPAY_API_KEY);
     case 'fincode':
-      return !!(process.env.FINCODE_SHOP_ID && process.env.FINCODE_API_KEY);
+      return !!(process.env.FINCODE_SHOP_ID && process.env.FINCODE_SECRET_KEY);
     default:
       return false;
   }

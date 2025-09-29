@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { StripePaymentService } from '@/lib/payment-services/stripe';
-import { PaymentService, PaymentCredentials } from '@/types/payment';
+import { PaymentService } from '@prisma/client';
+import { PaymentCredentials } from '@/types/payment';
 
 // リクエストバリデーション
 const validateRequestSchema = z.object({

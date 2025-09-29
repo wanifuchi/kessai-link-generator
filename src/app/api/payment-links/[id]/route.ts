@@ -10,7 +10,7 @@ import { generatePaymentQRCode } from '@/lib/qrcode'
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+): Promise<NextResponse> {
   try {
     const session = await getServerSession(authOptions)
     const { id } = params
@@ -141,11 +141,11 @@ export async function GET(
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+): Promise<NextResponse> {
   try {
     return await withSession(
-      () => getServerSession(authOptions),
-      async () => {
+      request,
+      async (req, session) => {
         const { id } = params
 
         if (!id) {
@@ -242,11 +242,11 @@ export async function PATCH(
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+): Promise<NextResponse> {
   try {
     return await withSession(
-      () => getServerSession(authOptions),
-      async () => {
+      request,
+      async (req, session) => {
         const { id } = params
 
         if (!id) {

@@ -21,11 +21,19 @@ function generateSecureId(): string {
 /**
  * 決済リンク作成 API
  */
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     return await withSession(
-      () => getServerSession(authOptions),
-      async () => {
+      request,
+      async (req, session) => {
+        // 認証チェック
+        if (!session?.user?.id) {
+          return NextResponse.json(
+            { success: false, error: '認証が必要です' },
+            { status: 401 }
+          )
+        }
+
         const body: CreatePaymentLinkRequest = await request.json()
         const { amount, currency, description, expiresAt, userPaymentConfigId } = body
 
@@ -73,10 +81,11 @@ export async function POST(request: NextRequest) {
         // 有効期限の設定（デフォルト: 24時間後）
         const expirationDate = expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-        // 決済リンクをデータベースに作成（userIdは自動で設定される）
+        // 決済リンクをデータベースに作成
         const paymentLink = await prisma.paymentLink.create({
           data: {
             id: linkId,
+            userId: session.user.id,
             userPaymentConfigId: userPaymentConfigId,
             amount: Math.round(amount), // セント単位
             currency: currency.toLowerCase(),
@@ -171,8 +180,8 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     return await withSession(
-      () => getServerSession(authOptions),
-      async () => {
+      request,
+      async (req, session) => {
         const { searchParams } = new URL(request.url)
         const page = parseInt(searchParams.get('page') || '1')
         const limit = parseInt(searchParams.get('limit') || '10')

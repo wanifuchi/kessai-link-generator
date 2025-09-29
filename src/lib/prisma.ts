@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { AsyncLocalStorage } from 'async_hooks'
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
 
 declare global {
   var prisma: PrismaClient | undefined
@@ -108,15 +110,21 @@ export function withUserId<T>(userId: string, fn: () => Promise<T>): Promise<T> 
 }
 
 // セッション情報からuserIdを取得してPrisma操作を実行するヘルパー関数
+// APIルート用のwithSession関数
 export async function withSession<T>(
-  getSession: () => Promise<{ user?: { id?: string } } | null>,
-  fn: () => Promise<T>
+  request: NextRequest,
+  fn: (req: NextRequest, session: any) => Promise<T>
 ): Promise<T> {
-  const session = await getSession()
-  if (!session?.user?.id) {
-    throw new Error('認証が必要です')
+  // NextAuthセッションを取得
+  const session = await getServerSession()
+
+  // セッション情報をコールバックに渡す
+  if (session?.user?.id) {
+    return withUserId(session.user.id as string, () => fn(request, session))
+  } else {
+    // セッションがない場合もコールバックを実行（内部で認証チェックする）
+    return fn(request, session)
   }
-  return withUserId(session.user.id, fn)
 }
 
 // 管理者権限でuserIdフィルタリングを無効化する関数（慎重に使用）

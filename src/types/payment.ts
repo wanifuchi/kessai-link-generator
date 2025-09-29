@@ -3,7 +3,7 @@ import { PaymentService } from '@prisma/client'
 // 決済リンクの状態
 export enum PaymentStatus {
   PENDING = 'pending',
-  SUCCEEDED = 'succeeded',
+  SUCCEEDED = 'completed',
   FAILED = 'failed',
   EXPIRED = 'expired',
   CANCELLED = 'cancelled',
@@ -138,4 +138,9 @@ export interface PaymentNotification {
   currency: string
   completedAt?: Date
   error?: string
+}
+
+// 決済サービス認証情報（汎用型）
+export interface PaymentCredentials {
+  [key: string]: any
 }

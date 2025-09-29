@@ -14,10 +14,9 @@ import {
 } from '@/lib/payment-utils';
 import { PaymentService } from '@prisma/client';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // TODO: 認証とユーザーPayPal設定確認を実装
-    // const session = await getServerSession(authOptions);
     // if (!session?.user) {
     //   return NextResponse.json(
     //     createErrorResponse('認証が必要です', PaymentService.paypal),
@@ -65,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     if (!paypalResult.success) {
       return NextResponse.json(
-        createErrorResponse(paypalResult.error, PaymentService.paypal),
+        createErrorResponse(paypalResult.error || 'PayPal決済の作成に失敗しました', PaymentService.paypal),
         { status: 400 }
       );
     }
@@ -103,7 +102,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('orderId');
@@ -159,7 +158,7 @@ export async function GET(request: NextRequest) {
         title: paymentLink.description,
         amount: paymentLink.amount,
         currency: paymentLink.currency,
-        service: PaymentService.paypal,
+        provider: PaymentService.paypal,
         status: paymentLink.status,
         paymentUrl: paymentLink.linkUrl,
         shareUrl: `${process.env.NEXTAUTH_URL}/p/${paymentLink.id}`,

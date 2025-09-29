@@ -11,7 +11,7 @@ import {
 } from '@/lib/payment-utils';
 import { PaymentService } from '@prisma/client';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const {
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     if (!squareResult.success) {
       return NextResponse.json(
-        createErrorResponse(squareResult.error, PaymentService.square),
+        createErrorResponse(squareResult.error || 'Square決済の作成に失敗しました', PaymentService.square),
         { status: 400 }
       );
     }
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('orderId');
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
         title: paymentLink.description,
         amount: paymentLink.amount,
         currency: paymentLink.currency,
-        service: PaymentService.square,
+        provider: PaymentService.square,
         status: paymentLink.status,
         paymentUrl: paymentLink.linkUrl,
         shareUrl: `${process.env.NEXTAUTH_URL}/p/${paymentLink.id}`,

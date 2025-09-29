@@ -15,18 +15,17 @@ const createStripePaymentLinkSchema = z.object({
   userPaymentConfigId: z.string().min(1, '決済設定IDは必須です'),
 });
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     return await withSession(
-      () => getServerSession(authOptions),
-      async () => {
+      request,
+      async (req, session) => {
         const body = await request.json();
         console.log('Stripe決済リンク作成リクエスト:', body);
 
         const validatedData = createStripePaymentLinkSchema.parse(body);
 
-        // セッション情報を取得
-        const session = await getServerSession(authOptions);
+        // セッション情報はwithSessionから取得済み
         if (!session?.user?.id) {
           return NextResponse.json({
             success: false,
@@ -87,14 +86,13 @@ export async function POST(request: NextRequest) {
           // データベースに保存
           const savedPaymentLink = await prisma.paymentLink.create({
             data: {
-              title: validatedData.title,
-              description: validatedData.description,
+              userId: session.user.id,
+              userPaymentConfigId: validatedData.userPaymentConfigId,
+              description: validatedData.title,
               amount: validatedData.amount,
               currency: validatedData.currency,
-              quantity: 1,
-              service: 'stripe',
-              serviceId: paymentLink.id, // StripeのPayment Link ID
-              paymentUrl: paymentLink.url, // Stripeの決済URL
+              stripePaymentIntentId: paymentLink.id, // StripeのPayment Link ID
+              linkUrl: paymentLink.url, // Stripeの決済URL
               status: 'pending',
               // メタデータに詳細情報を保存
               metadata: {
@@ -150,11 +148,11 @@ export async function POST(request: NextRequest) {
 }
 
 // GET - Stripe決済リンク一覧取得
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     return await withSession(
-      () => getServerSession(authOptions),
-      async () => {
+      request,
+      async (req, session) => {
         const { searchParams } = new URL(request.url);
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '10');
@@ -162,7 +160,11 @@ export async function GET(request: NextRequest) {
 
         const [paymentLinks, total] = await Promise.all([
           prisma.paymentLink.findMany({
-            where: { service: 'stripe' },
+            where: {
+              userPaymentConfig: {
+                provider: 'stripe'
+              }
+            },
             skip,
             take: limit,
             orderBy: { createdAt: 'desc' },
@@ -177,7 +179,13 @@ export async function GET(request: NextRequest) {
               }
             }
           }),
-          prisma.paymentLink.count({ where: { service: 'stripe' } })
+          prisma.paymentLink.count({
+            where: {
+              userPaymentConfig: {
+                provider: 'stripe'
+              }
+            }
+          })
         ]);
 
         return NextResponse.json({

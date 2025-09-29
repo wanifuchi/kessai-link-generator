@@ -29,12 +29,10 @@ export async function GET(
         paymentLink: {
           select: {
             id: true,
-            title: true,
             description: true,
             amount: true,
             currency: true,
-            service: true,
-            paymentUrl: true,
+            linkUrl: true,
             status: true,
             createdAt: true,
           }
@@ -98,7 +96,6 @@ export async function PUT(
         paymentLink: {
           select: {
             id: true,
-            title: true,
             amount: true,
             currency: true,
           }
@@ -110,7 +107,7 @@ export async function PUT(
     if (validatedData.status === 'completed' && existingTransaction.status !== 'completed') {
       await prisma.paymentLink.update({
         where: { id: existingTransaction.paymentLinkId },
-        data: { status: 'completed' }
+        data: { status: 'succeeded' }
       });
     }
     

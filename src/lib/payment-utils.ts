@@ -33,7 +33,7 @@ export function mapToPaymentStatus(serviceStatus: string, service: PaymentServic
     case 'captured':
     case 'approved':
     case 'success':
-      return 'succeeded';
+      return 'completed';
     case 'canceled':
     case 'cancelled':
       return 'cancelled';

@@ -25,13 +25,12 @@ export async function GET(
   const params = await context.params;
   try {
     return await withSession(
-      () => getServerSession(authOptions),
-      async () => {
+      request,
+      async (req, session) => {
         const setting = await prisma.apiSettings.findUnique({
           where: { id: params.id },
           select: {
             id: true,
-            service: true,
             environment: true,
             publishableKey: true,
             // 秘密キーは除外
@@ -77,8 +76,8 @@ export async function PUT(
   const params = await context.params;
   try {
     return await withSession(
-      () => getServerSession(authOptions),
-      async () => {
+      request,
+      async (req, session) => {
         const body = await request.json();
         console.log('API設定更新リクエスト:', { id: params.id, ...body });
 
@@ -116,7 +115,6 @@ export async function PUT(
           data: updateData,
           select: {
             id: true,
-            service: true,
             environment: true,
             publishableKey: true,
             // 秘密キーは返さない
@@ -162,8 +160,8 @@ export async function DELETE(
   const params = await context.params;
   try {
     return await withSession(
-      () => getServerSession(authOptions),
-      async () => {
+      request,
+      async (req, session) => {
         // 設定の存在確認（userIdフィルタリングは自動適用される）
         const existingSetting = await prisma.apiSettings.findUnique({
           where: { id: params.id },

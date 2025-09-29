@@ -11,7 +11,7 @@ import {
 } from '@/lib/payment-utils';
 import { PaymentService } from '@prisma/client';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   return withSession(request, async (req, session) => {
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       const fincodeConfig = await prisma.userPaymentConfig.findFirst({
         where: {
           userId: session.user.id,
-          service: PaymentService.fincode,
+          provider: PaymentService.fincode,
           isActive: true,
         },
       });
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
   });
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('orderId');
@@ -206,7 +206,7 @@ export async function GET(request: NextRequest) {
         title: paymentLink.description,
         amount: paymentLink.amount,
         currency: paymentLink.currency,
-        service: PaymentService.fincode,
+        provider: PaymentService.fincode,
         status: paymentLink.status,
         paymentUrl: paymentLink.linkUrl,
         shareUrl: `${process.env.NEXTAUTH_URL}/p/${paymentLink.id}`,
@@ -232,7 +232,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Fincode決済のキャンセル
-export async function DELETE(request: NextRequest) {
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('orderId');

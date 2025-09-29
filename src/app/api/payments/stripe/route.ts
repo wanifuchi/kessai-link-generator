@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       where: { id: paymentLinkId },
       data: {
         stripePaymentIntentId: paymentIntent.id,
-        status: 'processing',
+        status: 'pending',
       },
     })
 

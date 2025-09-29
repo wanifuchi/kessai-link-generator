@@ -116,7 +116,7 @@ async function handleOrderApproved(event: any) {
           paymentLinkId: customId,
           amount: parseInt((parseFloat(event.resource.purchase_units[0].amount.value) * 100).toString()),
           currency: event.resource.purchase_units[0].amount.currency_code.toUpperCase(),
-          service: PaymentService.paypal,
+          service: 'paypal',
           serviceTransactionId: orderId,
           status: 'pending',
           metadata: {
@@ -291,9 +291,9 @@ async function handlePaymentCaptureRefunded(event: any) {
           paymentLinkId: originalTransaction.paymentLinkId,
           amount: -parseInt((parseFloat(event.resource.amount.value) * 100).toString()), // 負の値で返金を表現
           currency: event.resource.amount.currency_code.toUpperCase(),
-          service: PaymentService.paypal,
+          service: 'paypal',
           serviceTransactionId: refundId,
-          status: 'completed',
+          status: 'refunded',
           paidAt: new Date(),
           metadata: {
             refundId: refundId,

@@ -79,7 +79,12 @@ async function handlePaymentCompleted(eventData: any) {
           { id: merchantPaymentId },
           { stripePaymentIntentId: paymentId },
         ],
-        service: PaymentService.paypay,
+        userPaymentConfig: {
+          provider: PaymentService.paypay,
+        },
+      },
+      include: {
+        userPaymentConfig: true,
       },
     });
 
@@ -104,7 +109,7 @@ async function handlePaymentCompleted(eventData: any) {
       await prisma.transaction.create({
         data: {
           paymentLinkId: paymentLink.id,
-          service: PaymentService.paypay,
+          service: 'paypay',
           serviceTransactionId: paymentId,
           amount: amount || paymentLink.amount,
           currency: currency || paymentLink.currency,
@@ -154,7 +159,12 @@ async function handlePaymentFailed(eventData: any) {
           { id: merchantPaymentId },
           { stripePaymentIntentId: paymentId },
         ],
-        service: PaymentService.paypay,
+        userPaymentConfig: {
+          provider: PaymentService.paypay,
+        },
+      },
+      include: {
+        userPaymentConfig: true,
       },
     });
 
@@ -198,7 +208,12 @@ async function handlePaymentCanceled(eventData: any) {
           { id: merchantPaymentId },
           { stripePaymentIntentId: paymentId },
         ],
-        service: PaymentService.paypay,
+        userPaymentConfig: {
+          provider: PaymentService.paypay,
+        },
+      },
+      include: {
+        userPaymentConfig: true,
       },
     });
 
@@ -242,7 +257,12 @@ async function handlePaymentExpired(eventData: any) {
           { id: merchantPaymentId },
           { stripePaymentIntentId: codeId },
         ],
-        service: PaymentService.paypay,
+        userPaymentConfig: {
+          provider: PaymentService.paypay,
+        },
+      },
+      include: {
+        userPaymentConfig: true,
       },
     });
 
