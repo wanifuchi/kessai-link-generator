@@ -110,7 +110,7 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
     await prisma.paymentLink.update({
       where: { id: linkId },
       data: {
-        status: 'completed',
+        status: 'succeeded',
         completedAt: new Date(),
         stripePaymentIntentId: paymentIntent.id,
       },
