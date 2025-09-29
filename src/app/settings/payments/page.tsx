@@ -15,11 +15,6 @@ export default function PaymentSettingsPage() {
   const [editingConfig, setEditingConfig] = useState<string | null>(null)
   const [testResults, setTestResults] = useState<Record<string, ConnectionTestResult>>({})
 
-  // 初期データ読み込み
-  useEffect(() => {
-    loadConfigs()
-  }, [])
-
   const loadConfigs = async () => {
     try {
       const response = await fetch('/api/payment-configs')
@@ -33,6 +28,11 @@ export default function PaymentSettingsPage() {
       setLoading(false)
     }
   }
+
+  // 初期データ読み込み
+  useEffect(() => {
+    loadConfigs()
+  }, [])
 
   const handleAddConfig = () => {
     setEditingConfig(null)
@@ -296,12 +296,6 @@ function PaymentConfigForm({
 
   const isEditing = !!configId
 
-  useEffect(() => {
-    if (isEditing) {
-      loadConfigData()
-    }
-  }, [configId, isEditing, loadConfigData])
-
   const loadConfigData = useCallback(async () => {
     if (!configId) return
 
@@ -315,6 +309,12 @@ function PaymentConfigForm({
       console.error('設定データの読み込みエラー:', error)
     }
   }, [configId])
+
+  useEffect(() => {
+    if (isEditing) {
+      loadConfigData()
+    }
+  }, [configId, isEditing, loadConfigData])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
