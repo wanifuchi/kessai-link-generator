@@ -19,7 +19,7 @@ interface PaymentLinkData {
   currency: string;
   status: string;
   service: string;
-  paymentUrl?: string;
+  linkUrl?: string; // Prismaスキーマの実際のフィールド名に合わせる
   expiresAt?: string;
   createdAt: string;
   metadata?: any;
@@ -36,16 +36,26 @@ export default function PaymentLinkPage() {
 
   const fetchPaymentLink = useCallback(async () => {
     try {
+      console.log('🔍 PaymentLink取得開始:', paymentLinkId);
       const response = await fetch(`/api/payment-links/${paymentLinkId}`);
       const data = await response.json();
 
       if (!response.ok) {
+        console.error('❌ API Response Error:', response.status, data.error);
         throw new Error(data.error || '決済リンクの取得に失敗しました');
       }
 
       if (data.success && data.data) {
+        console.log('✅ PaymentLink取得成功:', {
+          id: data.data?.id,
+          description: data.data?.description,
+          linkUrl: data.data?.linkUrl,
+          service: data.data?.service,
+          status: data.data?.status
+        });
         setPaymentLink(data.data);
       } else {
+        console.error('❌ PaymentLink Data Error:', data);
         throw new Error('決済リンクが見つかりません');
       }
     } catch (error) {
@@ -67,8 +77,8 @@ export default function PaymentLinkPage() {
 
     try {
       // 既にpaymentUrlが存在する場合は直接リダイレクト
-      if (paymentLink?.paymentUrl) {
-        window.location.href = paymentLink.paymentUrl;
+      if (paymentLink?.linkUrl) {
+        window.location.href = paymentLink.linkUrl;
         return;
       }
 
@@ -225,7 +235,7 @@ export default function PaymentLinkPage() {
                 </Badge>
               </div>
               <CardTitle className="text-3xl font-bold text-gray-900 mb-4">
-                {paymentLink.description}
+                {paymentLink.description || '決済リンク'}
               </CardTitle>
               {paymentLink.description && (
                 <CardDescription className="text-lg text-gray-600 mb-6">
@@ -321,10 +331,10 @@ export default function PaymentLinkPage() {
                     </div>
                     <PayPalButton
                       paymentLinkId={paymentLink.id}
-                      paymentUrl={paymentLink.paymentUrl}
+                      paymentUrl={paymentLink.linkUrl}
                       amount={paymentLink.amount}
                       currency={paymentLink.currency}
-                      title={paymentLink.description}
+                      title={paymentLink.description || '決済'}
                       onSuccess={(data) => {
                         console.log('PayPal決済成功:', data);
                       }}
