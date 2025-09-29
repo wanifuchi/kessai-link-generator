@@ -399,7 +399,7 @@ function PaymentConfigForm({
                 onChange={(e) => setFormData(prev => ({
                   ...prev,
                   provider: e.target.value as PaymentService,
-                  config: {} // プロバイダー変更時は設定をリセット
+                  config: undefined // プロバイダー変更時は設定をリセット
                 }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isEditing} // 編集時はプロバイダー変更不可
