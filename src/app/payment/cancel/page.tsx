@@ -21,14 +21,6 @@ function PaymentCancelContent() {
   const [paymentDetails, setPaymentDetails] = useState<PaymentLinkDetails | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (paymentLinkId) {
-      fetchPaymentDetails();
-    } else {
-      setLoading(false);
-    }
-  }, [paymentLinkId, fetchPaymentDetails]);
-
   const fetchPaymentDetails = useCallback(async () => {
     try {
       const response = await fetch(`/api/payment-links/${paymentLinkId}`);
@@ -49,6 +41,14 @@ function PaymentCancelContent() {
       setLoading(false);
     }
   }, [paymentLinkId]);
+
+  useEffect(() => {
+    if (paymentLinkId) {
+      fetchPaymentDetails();
+    } else {
+      setLoading(false);
+    }
+  }, [paymentLinkId, fetchPaymentDetails]);
 
   const formatAmount = (amount: number, currency: string) => {
     return new Intl.NumberFormat('ja-JP', {
