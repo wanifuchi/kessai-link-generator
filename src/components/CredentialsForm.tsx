@@ -83,7 +83,7 @@ export default function CredentialsForm() {
     watch,
     setValue,
   } = useForm<CredentialsFormData>({
-    resolver: zodResolver(getSchema()),
+    resolver: zodResolver(getSchema()) as any,
     mode: 'onChange',
   });
 
