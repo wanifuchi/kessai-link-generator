@@ -26,6 +26,36 @@ function PaymentSuccessContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchPaymentDetails = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/payment-links/${paymentLinkId}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '決済情報の取得に失敗しました');
+      }
+
+      if (data.success && data.data) {
+        setPaymentDetails({
+          id: data.data.id,
+          title: data.data.title,
+          amount: data.data.amount,
+          currency: data.data.currency,
+          service: data.data.service,
+          paidAt: new Date().toISOString(),
+          transactionId: data.data.transactions?.[0]?.id || 'N/A',
+        });
+      } else {
+        throw new Error('決済情報が見つかりません');
+      }
+    } catch (error) {
+      console.error('決済情報取得エラー:', error);
+      setError(error instanceof Error ? error.message : '決済情報の取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }, [paymentLinkId]);
+
   useEffect(() => {
     // 成功アニメーション
     const duration = 3 * 1000;
@@ -68,45 +98,6 @@ function PaymentSuccessContent() {
 
     fetchPaymentDetails();
   }, [paymentLinkId, fetchPaymentDetails]);
-
-  const fetchPaymentDetails = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/payment-links/${paymentLinkId}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || '決済情報の取得に失敗しました');
-      }
-
-      if (data.success && data.data) {
-        const paymentLink = data.data;
-        const completedTransaction = paymentLink.transactions.find(
-          (t: any) => t.status === 'completed'
-        );
-
-        if (completedTransaction) {
-          setPaymentDetails({
-            id: paymentLink.id,
-            title: paymentLink.description,
-            amount: completedTransaction.amount,
-            currency: completedTransaction.currency,
-            service: completedTransaction.service,
-            paidAt: completedTransaction.paidAt,
-            transactionId: completedTransaction.serviceTransactionId,
-          });
-        } else {
-          setError('完了した決済が見つかりません');
-        }
-      } else {
-        setError('決済情報が見つかりません');
-      }
-    } catch (error) {
-      console.error('決済情報取得エラー:', error);
-      setError(error instanceof Error ? error.message : '決済情報の取得に失敗しました');
-    } finally {
-      setLoading(false);
-    }
-  }, [paymentLinkId]);
 
   const formatAmount = (amount: number, currency: string) => {
     return new Intl.NumberFormat('ja-JP', {
