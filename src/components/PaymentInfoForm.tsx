@@ -74,7 +74,7 @@ export default function PaymentInfoForm() {
   if (!serviceInfo) return null;
 
   // サービスでサポートされている通貨を取得
-  const supportedCurrencies = serviceInfo.supportedCurrencies.map(code => ({
+  const supportedCurrencies = serviceInfo.supportedCurrencies.map((code: string) => ({
     code,
     name: code,
     symbol: getCurrencySymbol(code)
