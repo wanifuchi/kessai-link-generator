@@ -153,7 +153,7 @@ export default function CredentialsForm() {
       paypay: 'https://developer.paypay.ne.jp/',
       fincode: 'https://docs.fincode.jp/api',
     };
-    return links[selectedService] || '#';
+    return links[selectedService as keyof typeof links] || '#';
   };
 
   const getServiceInstructions = () => {
