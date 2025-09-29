@@ -18,6 +18,12 @@ export interface CreatePaymentLinkRequest {
   userPaymentConfigId: string
 }
 
+// QRコードデータ
+export interface QRCodeData {
+  dataUrl: string
+  svg: string
+}
+
 // 決済リンク作成レスポンス
 export interface CreatePaymentLinkResponse {
   id: string
@@ -28,6 +34,7 @@ export interface CreatePaymentLinkResponse {
   status: PaymentStatus
   expiresAt?: Date
   createdAt: Date
+  qrCode?: QRCodeData | null
 }
 
 // 決済リンク詳細

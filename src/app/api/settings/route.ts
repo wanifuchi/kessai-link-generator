@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authOptions';
 import { z } from 'zod';
-import { requireAuth } from '@/lib/auth';
+import prisma, { withSession } from '@/lib/prisma';
+import { encryptData, decryptData } from '@/lib/encryption';
 
 // Dynamic server usage for authentication
 export const dynamic = 'force-dynamic';
-
-const prisma = new PrismaClient();
 
 // API設定のバリデーションスキーマ
 const apiSettingsSchema = z.object({
@@ -32,49 +32,56 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 認証確認
-    const authResult = await requireAuth(request);
-    if ('error' in authResult) {
-      return authResult.error;
-    }
-    const { user } = authResult;
+    return await withSession(
+      () => getServerSession(authOptions),
+      async () => {
+        const { searchParams } = new URL(request.url);
+        const service = searchParams.get('service');
+        const environment = searchParams.get('environment');
 
-    const { searchParams } = new URL(request.url);
-    const service = searchParams.get('service');
-    const environment = searchParams.get('environment');
+        const where: any = {};
+        if (service) where.service = service.toLowerCase();
+        if (environment) where.environment = environment.toLowerCase();
 
-    const where: any = {
-      userId: user.id, // ユーザー固有のデータのみ取得
-    };
-    if (service) where.service = service.toLowerCase();
-    if (environment) where.environment = environment.toLowerCase();
+        const settings = await prisma.apiSettings.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            service: true,
+            environment: true,
+            publishableKey: true,
+            // 秘密キーは除外してセキュリティを確保
+            webhookUrl: true,
+            description: true,
+            isActive: true,
+            createdAt: true,
+            updatedAt: true,
+            userId: true,
+          }
+        });
 
-    const settings = await prisma.apiSettings.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        service: true,
-        environment: true,
-        publishableKey: true,
-        // 秘密キーは除外してセキュリティを確保
-        webhookUrl: true,
-        description: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-        userId: true,
+        // 公開キーのみ復号化（秘密キーは含まれていない）
+        const decryptedSettings = settings.map(setting => ({
+          ...setting,
+          publishableKey: setting.publishableKey
+            ? decryptData<string>(setting.publishableKey)
+            : null
+        }));
+
+        // セッション情報を取得してレスポンスに含める
+        const session = await getServerSession(authOptions);
+
+        return NextResponse.json({
+          success: true,
+          data: decryptedSettings,
+          user: {
+            id: session?.user?.id,
+            email: session?.user?.email
+          }
+        });
       }
-    });
-
-    return NextResponse.json({
-      success: true,
-      data: settings,
-      user: {
-        id: user.id,
-        email: user.email
-      }
-    });
+    );
 
   } catch (error) {
     console.error('API設定取得エラー:', error);
@@ -119,68 +126,65 @@ export async function POST(request: NextRequest) {
       }, { status: 503 });
     }
 
-    // 認証確認
-    const authResult = await requireAuth(request);
-    if ('error' in authResult) {
-      return authResult.error;
-    }
-    const { user } = authResult;
+    return await withSession(
+      () => getServerSession(authOptions),
+      async () => {
+        body = await request.json();
+        console.log('API設定作成リクエスト:', body);
 
-    body = await request.json();
-    console.log('API設定作成リクエスト:', body);
+        const validatedData = apiSettingsSchema.parse(body);
 
-    const validatedData = apiSettingsSchema.parse(body);
+        // 暗号化実装
+        const encryptedSecretKey = encryptData(validatedData.secretKey);
+        const encryptedPublishableKey = validatedData.publishableKey
+          ? encryptData(validatedData.publishableKey)
+          : null;
 
-    // TODO: 実際の暗号化実装（現在は平文で保存）
-    // const encryptedSecretKey = await encrypt(validatedData.secretKey);
-    // const encryptedPublishableKey = validatedData.publishableKey ? await encrypt(validatedData.publishableKey) : null;
+        let existingSetting = null;
+        let apiSetting = null;
 
-    let existingSetting = null;
-    let apiSetting = null;
+        try {
+          // 同じサービス・環境の組み合わせが既に存在するかチェック（userIdフィルタリングは自動適用される）
+          existingSetting = await prisma.apiSettings.findFirst({
+            where: {
+              service: validatedData.service,
+              environment: validatedData.environment,
+            }
+          });
 
-    try {
-      // 同じユーザーで同一サービス・環境の組み合わせが既に存在するかチェック
-      existingSetting = await prisma.apiSettings.findFirst({
-        where: {
-          service: validatedData.service,
-          environment: validatedData.environment,
-          userId: user.id, // ユーザー固有の重複チェック
-        }
-      });
+          if (existingSetting) {
+            return NextResponse.json({
+              success: false,
+              error: '同じサービス・環境の設定が既に存在します',
+              details: `${validatedData.service} - ${validatedData.environment}`
+            }, { status: 409 });
+          }
 
-      if (existingSetting) {
-        return NextResponse.json({
-          success: false,
-          error: '同じサービス・環境の設定が既に存在します',
-          details: `${validatedData.service} - ${validatedData.environment}`
-        }, { status: 409 });
-      }
-
-      apiSetting = await prisma.apiSettings.create({
-        data: {
-          service: validatedData.service,
-          environment: validatedData.environment,
-          publishableKey: validatedData.publishableKey, // TODO: 暗号化
-          secretKey: validatedData.secretKey, // TODO: 暗号化
-          webhookUrl: validatedData.webhookUrl,
-          description: validatedData.description,
-          isActive: validatedData.isActive,
-          userId: user.id, // 認証ユーザーIDを設定
-        },
-        select: {
-          id: true,
-          service: true,
-          environment: true,
-          publishableKey: true,
-          // 秘密キーは返さない
-          webhookUrl: true,
-          description: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-          userId: true,
-        }
-      });
+          apiSetting = await prisma.apiSettings.create({
+            data: {
+              service: validatedData.service,
+              environment: validatedData.environment,
+              publishableKey: encryptedPublishableKey,
+              secretKey: encryptedSecretKey,
+              webhookUrl: validatedData.webhookUrl,
+              description: validatedData.description,
+              isActive: validatedData.isActive,
+              // userIdは自動で設定される
+            },
+            select: {
+              id: true,
+              service: true,
+              environment: true,
+              publishableKey: true,
+              // 秘密キーは返さない
+              webhookUrl: true,
+              description: true,
+              isActive: true,
+              createdAt: true,
+              updatedAt: true,
+              userId: true,
+            }
+          });
     } catch (dbError) {
       console.error('データベース操作エラー:', dbError);
 
@@ -226,10 +230,12 @@ export async function POST(request: NextRequest) {
       throw dbError;
     }
 
-    return NextResponse.json({
-      success: true,
-      data: apiSetting
-    }, { status: 201 });
+        return NextResponse.json({
+          success: true,
+          data: apiSetting
+        }, { status: 201 });
+      }
+    );
 
   } catch (error) {
     console.error('API設定作成エラー:', error);

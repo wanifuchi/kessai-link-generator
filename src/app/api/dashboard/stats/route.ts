@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authOptions';
+import prisma, { withSession } from '@/lib/prisma';
 
 // Dynamic server usage for authentication
 export const dynamic = 'force-dynamic';
@@ -59,180 +60,161 @@ interface DashboardStats {
 
 export async function GET(request: NextRequest) {
   try {
-    // 認証確認
-    const authResult = await requireAuth(request);
-    if ('error' in authResult) {
-      return authResult.error;
-    }
-    const { user } = authResult;
+    return await withSession(
+      () => getServerSession(authOptions),
+      async () => {
+        const { searchParams } = new URL(request.url);
+        const dateRange = searchParams.get('range') || '30'; // デフォルト30日
+        const daysAgo = parseInt(dateRange);
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - daysAgo);
 
-    const { searchParams } = new URL(request.url);
-    const dateRange = searchParams.get('range') || '30'; // デフォルト30日
-    const daysAgo = parseInt(dateRange);
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - daysAgo);
+        // 前期間の開始日（比較用）
+        const prevStartDate = new Date(startDate);
+        prevStartDate.setDate(prevStartDate.getDate() - daysAgo);
 
-    // 前期間の開始日（比較用）
-    const prevStartDate = new Date(startDate);
-    prevStartDate.setDate(prevStartDate.getDate() - daysAgo);
-
-    // ユーザー固有のフィルタ条件
-    const userFilter = { userId: user.id };
-
-    // 基本統計を並列で取得
-    const [
-      totalLinks,
-      totalLinksAll,
-      paymentLinks,
-      allPaymentLinks,
-      transactions,
-      allTransactions,
-      prevTransactions,
-      prevLinks,
-      recentLinks,
-      serviceStats,
-      currencyStats
-    ] = await Promise.all([
-      // 期間内の総決済リンク数（ユーザー固有）
-      prisma.paymentLink.count({
-        where: {
-          ...userFilter,
-          createdAt: {
-            gte: startDate
-          }
-        }
-      }),
-
-      // 全ての決済リンク数（ユーザー固有）
-      prisma.paymentLink.count({
-        where: userFilter
-      }),
-
-      // 期間内の決済リンク詳細（収益計算用）（ユーザー固有）
-      prisma.paymentLink.findMany({
-        where: {
-          ...userFilter,
-          createdAt: {
-            gte: startDate
-          }
-        },
-        include: {
-          transactions: {
+        // 基本統計を並列で取得（userIdフィルタリングは自動適用される）
+        const [
+          totalLinks,
+          totalLinksAll,
+          paymentLinks,
+          allPaymentLinks,
+          transactions,
+          allTransactions,
+          prevTransactions,
+          prevLinks,
+          recentLinks,
+          serviceStats,
+          currencyStats
+        ] = await Promise.all([
+          // 期間内の総決済リンク数
+          prisma.paymentLink.count({
             where: {
-              status: 'completed'
+              createdAt: {
+                gte: startDate
+              }
             }
-          }
-        }
-      }),
+          }),
 
-      // 全ての決済リンク（トップパフォーマンス計算用）（ユーザー固有）
-      prisma.paymentLink.findMany({
-        where: userFilter,
-        include: {
-          transactions: {
+          // 全ての決済リンク数
+          prisma.paymentLink.count(),
+
+          // 期間内の決済リンク詳細（収益計算用）
+          prisma.paymentLink.findMany({
+            where: {
+              createdAt: {
+                gte: startDate
+              }
+            },
+            include: {
+              transactions: {
+                where: {
+                  status: 'completed'
+                }
+              }
+            }
+          }),
+
+          // 全ての決済リンク（トップパフォーマンス計算用）
+          prisma.paymentLink.findMany({
+            include: {
+              transactions: {
+                where: {
+                  status: 'completed',
+                  paidAt: {
+                    gte: startDate
+                  }
+                }
+              }
+            }
+          }),
+
+          // 期間内の全取引
+          prisma.transaction.findMany({
+            where: {
+              createdAt: {
+                gte: startDate
+              }
+            },
+            include: {
+              paymentLink: true
+            }
+          }),
+
+          // 全取引（状態統計用）
+          prisma.transaction.findMany({
+            where: {
+              createdAt: {
+                gte: startDate
+              }
+            }
+          }),
+
+          // 前期間の取引（成長率計算用）
+          prisma.transaction.findMany({
+            where: {
+              createdAt: {
+                gte: prevStartDate,
+                lt: startDate
+              }
+            }
+          }),
+
+          // 前期間のリンク（成長率計算用）
+          prisma.paymentLink.count({
+            where: {
+              createdAt: {
+                gte: prevStartDate,
+                lt: startDate
+              }
+            }
+          }),
+
+          // 最近の決済リンク
+          prisma.paymentLink.findMany({
+            take: 10,
+            orderBy: {
+              createdAt: 'desc'
+            },
+            include: {
+              transactions: true
+            }
+          }),
+
+          // サービス別統計
+          prisma.transaction.groupBy({
+            by: ['service'],
             where: {
               status: 'completed',
               paidAt: {
                 gte: startDate
               }
+            },
+            _count: {
+              _all: true
+            },
+            _sum: {
+              amount: true
             }
-          }
-        }
-      }),
+          }),
 
-      // 期間内の全取引（ユーザー固有）
-      prisma.transaction.findMany({
-        where: {
-          createdAt: {
-            gte: startDate
-          },
-          paymentLink: userFilter
-        },
-        include: {
-          paymentLink: true
-        }
-      }),
-
-      // 全取引（状態統計用）（ユーザー固有）
-      prisma.transaction.findMany({
-        where: {
-          createdAt: {
-            gte: startDate
-          },
-          paymentLink: userFilter
-        }
-      }),
-
-      // 前期間の取引（成長率計算用）（ユーザー固有）
-      prisma.transaction.findMany({
-        where: {
-          createdAt: {
-            gte: prevStartDate,
-            lt: startDate
-          },
-          paymentLink: userFilter
-        }
-      }),
-
-      // 前期間のリンク（成長率計算用）（ユーザー固有）
-      prisma.paymentLink.count({
-        where: {
-          ...userFilter,
-          createdAt: {
-            gte: prevStartDate,
-            lt: startDate
-          }
-        }
-      }),
-
-      // 最近の決済リンク（ユーザー固有）
-      prisma.paymentLink.findMany({
-        where: userFilter,
-        take: 10,
-        orderBy: {
-          createdAt: 'desc'
-        },
-        include: {
-          transactions: true
-        }
-      }),
-
-      // サービス別統計（ユーザー固有）
-      prisma.transaction.groupBy({
-        by: ['service'],
-        where: {
-          status: 'completed',
-          paidAt: {
-            gte: startDate
-          },
-          paymentLink: userFilter
-        },
-        _count: {
-          _all: true
-        },
-        _sum: {
-          amount: true
-        }
-      }),
-
-      // 通貨別統計（ユーザー固有）
-      prisma.transaction.groupBy({
-        by: ['currency'],
-        where: {
-          status: 'completed',
-          paidAt: {
-            gte: startDate
-          },
-          paymentLink: userFilter
-        },
-        _count: {
-          _all: true
-        },
-        _sum: {
-          amount: true
-        }
-      })
-    ]);
+          // 通貨別統計
+          prisma.transaction.groupBy({
+            by: ['currency'],
+            where: {
+              status: 'completed',
+              paidAt: {
+                gte: startDate
+              }
+            },
+            _count: {
+              _all: true
+            },
+            _sum: {
+              amount: true
+            }
+          })
+        ]);
 
     // 完了した取引
     const completedTransactions = transactions.filter(t => t.status === 'completed');
@@ -292,41 +274,46 @@ export async function GET(request: NextRequest) {
     // 最近のアクティビティ
     const recentActivity = getRecentActivity(recentLinks, transactions);
 
-    const stats: DashboardStats = {
-      totalLinks: totalLinksAll,
-      totalRevenue,
-      totalTransactions,
-      conversionRate: Math.round(conversionRate * 100) / 100,
-      successRate: Math.round(successRate * 100) / 100,
-      averageTransactionValue: Math.round(averageTransactionValue),
-      growth: {
-        revenueGrowth: Math.round(revenueGrowth * 100) / 100,
-        transactionGrowth: Math.round(transactionGrowth * 100) / 100,
-        linkGrowth: Math.round(linkGrowth * 100) / 100
-      },
-      revenueByMonth,
-      linksByStatus,
-      serviceStats: processedServiceStats,
-      currencyStats: processedCurrencyStats,
-      topPerformingLinks,
-      recentActivity,
-      dailyStats
-    };
+        const stats: DashboardStats = {
+          totalLinks: totalLinksAll,
+          totalRevenue,
+          totalTransactions,
+          conversionRate: Math.round(conversionRate * 100) / 100,
+          successRate: Math.round(successRate * 100) / 100,
+          averageTransactionValue: Math.round(averageTransactionValue),
+          growth: {
+            revenueGrowth: Math.round(revenueGrowth * 100) / 100,
+            transactionGrowth: Math.round(transactionGrowth * 100) / 100,
+            linkGrowth: Math.round(linkGrowth * 100) / 100
+          },
+          revenueByMonth,
+          linksByStatus,
+          serviceStats: processedServiceStats,
+          currencyStats: processedCurrencyStats,
+          topPerformingLinks,
+          recentActivity,
+          dailyStats
+        };
 
-    return NextResponse.json({
-      success: true,
-      data: stats,
-      user: {
-        id: user.id,
-        email: user.email
+        // セッション情報を取得してレスポンスに含める
+        const session = await getServerSession(authOptions);
+
+        return NextResponse.json({
+          success: true,
+          data: stats,
+          user: {
+            id: session?.user?.id,
+            email: session?.user?.email
+          }
+        });
       }
-    });
+    );
 
   } catch (error) {
     console.error('Dashboard stats error:', error);
     return NextResponse.json({
       success: false,
-      error: 'Failed to fetch dashboard statistics'
+      error: 'ダッシュボード統計の取得に失敗しました'
     }, { status: 500 });
   }
 }

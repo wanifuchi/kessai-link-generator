@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import QRCode from 'qrcode';
 import { z } from 'zod';
+
+// QRCodeライブラリの動的インポート
+async function importQRCode() {
+  try {
+    const QRCode = await import('qrcode');
+    return QRCode.default;
+  } catch (error) {
+    console.error('QRCodeライブラリの読み込みに失敗しました:', error);
+    throw new Error('QRCodeライブラリを読み込めませんでした');
+  }
+}
 
 // リクエストバリデーション
 const qrRequestSchema = z.object({
@@ -12,10 +22,13 @@ const qrRequestSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     // バリデーション
     const validatedData = qrRequestSchema.parse(body);
     const { url, size, margin } = validatedData;
+
+    // QRCodeライブラリを動的にインポート
+    const QRCode = await importQRCode();
 
     // QRコード生成オプション
     const qrOptions = {
@@ -95,6 +108,9 @@ export async function GET(request: NextRequest) {
 
     // バリデーション
     const validatedData = qrRequestSchema.parse({ url, size, margin });
+
+    // QRCodeライブラリを動的にインポート
+    const QRCode = await importQRCode();
 
     // QRコード生成オプション
     const qrOptions = {

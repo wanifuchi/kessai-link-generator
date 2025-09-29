@@ -12,7 +12,7 @@ import {
   PayPayConfig,
   FincodeConfig
 } from '@/types/paymentConfig'
-import prisma from '@/lib/prisma'
+import prisma, { withUserId } from '@/lib/prisma'
 
 export class PaymentConfigService {
   /**
@@ -22,46 +22,44 @@ export class PaymentConfigService {
     userId: string,
     formData: PaymentConfigFormData
   ): Promise<EncryptedPaymentConfig> {
-    // 入力値検証
-    const validation = this.validateConfig(formData.provider, formData.config)
-    if (!validation.isValid) {
-      throw new Error(`設定エラー: ${validation.errors.join(', ')}`)
-    }
+    return await withUserId(userId, async () => {
+      // 入力値検証
+      const validation = this.validateConfig(formData.provider, formData.config)
+      if (!validation.isValid) {
+        throw new Error(`設定エラー: ${validation.errors.join(', ')}`)
+      }
 
-    // 既存の同名設定をチェック
-    const existing = await prisma.userPaymentConfig.findUnique({
-      where: {
-        userId_provider_displayName: {
-          userId,
+      // 既存の同名設定をチェック（userIdフィルタリングは自動適用される）
+      const existing = await prisma.userPaymentConfig.findFirst({
+        where: {
           provider: formData.provider,
           displayName: formData.displayName
         }
+      })
+
+      if (existing) {
+        throw new Error(`設定名「${formData.displayName}」は既に使用されています`)
       }
-    })
 
-    if (existing) {
-      throw new Error(`設定名「${formData.displayName}」は既に使用されています`)
-    }
-
-    // 設定データを暗号化
-    const configData: PaymentConfigData = {
-      [formData.provider]: formData.config
-    }
-    const encryptedConfig = encryptData(configData)
-
-    // データベースに保存
-    const saved = await prisma.userPaymentConfig.create({
-      data: {
-        userId,
-        provider: formData.provider,
-        displayName: formData.displayName,
-        encryptedConfig,
-        isTestMode: formData.isTestMode,
-        isActive: formData.isActive
+      // 設定データを暗号化
+      const configData: PaymentConfigData = {
+        [formData.provider]: formData.config
       }
-    })
+      const encryptedConfig = encryptData(configData)
 
-    return saved as EncryptedPaymentConfig
+      // データベースに保存（userIdは自動で設定される）
+      const saved = await prisma.userPaymentConfig.create({
+        data: {
+          provider: formData.provider,
+          displayName: formData.displayName,
+          encryptedConfig,
+          isTestMode: formData.isTestMode,
+          isActive: formData.isActive
+        }
+      })
+
+      return saved as EncryptedPaymentConfig
+    })
   }
 
   /**
@@ -72,93 +70,104 @@ export class PaymentConfigService {
     userId: string,
     formData: Partial<PaymentConfigFormData>
   ): Promise<EncryptedPaymentConfig> {
-    // 設定の存在確認と所有者チェック
-    const existing = await prisma.userPaymentConfig.findFirst({
-      where: { id: configId, userId }
-    })
+    return await withUserId(userId, async () => {
+      // 設定の存在確認（userIdフィルタリングは自動適用される）
+      const existing = await prisma.userPaymentConfig.findFirst({
+        where: { id: configId }
+      })
 
-    if (!existing) {
-      throw new Error('設定が見つからないか、アクセス権限がありません')
-    }
-
-    const updateData: any = {}
-
-    // 設定データが提供されている場合は暗号化
-    if (formData.config) {
-      const validation = this.validateConfig(existing.provider, formData.config)
-      if (!validation.isValid) {
-        throw new Error(`設定エラー: ${validation.errors.join(', ')}`)
+      if (!existing) {
+        throw new Error('設定が見つからないか、アクセス権限がありません')
       }
 
-      const configData: PaymentConfigData = {
-        [existing.provider]: formData.config
+      const updateData: any = {}
+
+      // 設定データが提供されている場合は暗号化
+      if (formData.config) {
+        const validation = this.validateConfig(existing.provider, formData.config)
+        if (!validation.isValid) {
+          throw new Error(`設定エラー: ${validation.errors.join(', ')}`)
+        }
+
+        const configData: PaymentConfigData = {
+          [existing.provider]: formData.config
+        }
+        updateData.encryptedConfig = encryptData(configData)
       }
-      updateData.encryptedConfig = encryptData(configData)
-    }
 
-    // その他のフィールドを更新
-    if (formData.displayName !== undefined) updateData.displayName = formData.displayName
-    if (formData.isTestMode !== undefined) updateData.isTestMode = formData.isTestMode
-    if (formData.isActive !== undefined) updateData.isActive = formData.isActive
+      // その他のフィールドを更新
+      if (formData.displayName !== undefined) updateData.displayName = formData.displayName
+      if (formData.isTestMode !== undefined) updateData.isTestMode = formData.isTestMode
+      if (formData.isActive !== undefined) updateData.isActive = formData.isActive
 
-    const updated = await prisma.userPaymentConfig.update({
-      where: { id: configId },
-      data: updateData
+      // userIdフィルタリングが自動適用される
+      const updated = await prisma.userPaymentConfig.update({
+        where: { id: configId },
+        data: updateData
+      })
+
+      return updated as EncryptedPaymentConfig
     })
-
-    return updated as EncryptedPaymentConfig
   }
 
   /**
    * 決済設定を取得（復号化済み）
    */
   static async getConfig(configId: string, userId: string): Promise<PaymentConfigFormData | null> {
-    const config = await prisma.userPaymentConfig.findFirst({
-      where: { id: configId, userId }
-    })
+    return await withUserId(userId, async () => {
+      // userIdフィルタリングは自動適用される
+      const config = await prisma.userPaymentConfig.findFirst({
+        where: { id: configId }
+      })
 
-    if (!config) return null
+      if (!config) return null
 
-    try {
-      const decryptedData = decryptData<PaymentConfigData>(config.encryptedConfig)
-      const providerConfig = decryptedData[config.provider]
+      try {
+        const decryptedData = decryptData<PaymentConfigData>(config.encryptedConfig)
+        const providerConfig = decryptedData[config.provider]
 
-      return {
-        displayName: config.displayName,
-        provider: config.provider,
-        isTestMode: config.isTestMode,
-        isActive: config.isActive,
-        config: providerConfig
+        return {
+          displayName: config.displayName,
+          provider: config.provider,
+          isTestMode: config.isTestMode,
+          isActive: config.isActive,
+          config: providerConfig
+        }
+      } catch (error) {
+        console.error('決済設定の復号化エラー:', error)
+        throw new Error('設定データの読み込みに失敗しました')
       }
-    } catch (error) {
-      console.error('決済設定の復号化エラー:', error)
-      throw new Error('設定データの読み込みに失敗しました')
-    }
+    })
   }
 
   /**
    * ユーザーの全決済設定を取得（設定データは除外）
    */
   static async getUserConfigs(userId: string): Promise<EncryptedPaymentConfig[]> {
-    const configs = await prisma.userPaymentConfig.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' }
-    })
+    return await withUserId(userId, async () => {
+      // userIdフィルタリングは自動適用される
+      const configs = await prisma.userPaymentConfig.findMany({
+        orderBy: { createdAt: 'desc' }
+      })
 
-    return configs as EncryptedPaymentConfig[]
+      return configs as EncryptedPaymentConfig[]
+    })
   }
 
   /**
    * 決済設定を削除
    */
   static async deleteConfig(configId: string, userId: string): Promise<void> {
-    const deleted = await prisma.userPaymentConfig.deleteMany({
-      where: { id: configId, userId }
-    })
+    return await withUserId(userId, async () => {
+      // userIdフィルタリングが自動適用される
+      const deleted = await prisma.userPaymentConfig.deleteMany({
+        where: { id: configId }
+      })
 
-    if (deleted.count === 0) {
-      throw new Error('設定が見つからないか、アクセス権限がありません')
-    }
+      if (deleted.count === 0) {
+        throw new Error('設定が見つからないか、アクセス権限がありません')
+      }
+    })
   }
 
   /**
@@ -273,12 +282,15 @@ export class PaymentConfigService {
     userId: string,
     result: ConnectionTestResult
   ): Promise<void> {
-    await prisma.userPaymentConfig.updateMany({
-      where: { id: configId, userId },
-      data: {
-        lastTestedAt: result.testedAt,
-        verifiedAt: result.success ? result.testedAt : null
-      }
+    return await withUserId(userId, async () => {
+      // userIdフィルタリングが自動適用される
+      await prisma.userPaymentConfig.updateMany({
+        where: { id: configId },
+        data: {
+          lastTestedAt: result.testedAt,
+          verifiedAt: result.success ? result.testedAt : null
+        }
+      })
     })
   }
 }

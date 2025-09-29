@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,13 +34,7 @@ export default function PaymentLinkPage() {
   const [processingStripe, setProcessingStripe] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (paymentLinkId) {
-      fetchPaymentLink();
-    }
-  }, [paymentLinkId]);
-
-  const fetchPaymentLink = async () => {
+  const fetchPaymentLink = useCallback(async () => {
     try {
       const response = await fetch(`/api/payment-links/${paymentLinkId}`);
       const data = await response.json();
@@ -60,7 +54,13 @@ export default function PaymentLinkPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [paymentLinkId]);
+
+  useEffect(() => {
+    if (paymentLinkId) {
+      fetchPaymentLink();
+    }
+  }, [paymentLinkId, fetchPaymentLink]);
 
   const handleStripePayment = async () => {
     setProcessingStripe(true);

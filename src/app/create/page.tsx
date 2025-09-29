@@ -1,17 +1,42 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { CreatePaymentLinkRequest, CreatePaymentLinkResponse } from '@/types/payment'
-import { PaymentService } from '@prisma/client'
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  ArrowLeft,
+  CreditCard,
+  DollarSign,
+  Calendar,
+  Settings,
+  Loader2,
+  Eye,
+  FileText,
+  Clock,
+  Zap,
+  Copy,
+  CheckCircle,
+  AlertCircle,
+  Info
+} from 'lucide-react';
+import { PaymentFormData, CreatePaymentLinkRequest, CreatePaymentLinkResponse } from '@/types/payment';
+import QRCodeDisplay from '@/components/QRCodeDisplay';
 
 interface PaymentConfig {
-  id: string
-  provider: PaymentService
-  displayName: string
-  isTestMode: boolean
-  isActive: boolean
+  id: string;
+  displayName: string;
+  provider: string;
+  isTestMode: boolean;
+  isActive: boolean;
 }
 
 export default function CreatePaymentLinkPage() {
@@ -130,180 +155,312 @@ export default function CreatePaymentLinkPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">決済リンク作成</h1>
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center gap-4 mb-8">
+          <Link href="/dashboard">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              戻る
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold">決済リンク作成</h1>
+            <p className="text-muted-foreground">新しい決済リンクを作成してください</p>
+          </div>
+        </div>
 
-        {/* 成功メッセージ */}
-        {success && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-            <h2 className="text-lg font-semibold text-green-800 mb-4">
-              決済リンクが作成されました！
-            </h2>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-green-700 mb-1">
-                  決済リンク URL
-                </label>
-                <div className="flex">
-                  <input
-                    type="text"
-                    value={success.linkUrl}
-                    readOnly
-                    className="flex-1 p-2 border border-green-300 rounded-l-md bg-white"
-                  />
-                  <button
-                    onClick={() => copyToClipboard(success.linkUrl)}
-                    className="px-4 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700"
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* メインフォーム */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  決済情報
+                </CardTitle>
+                <CardDescription>
+                  決済リンクの基本情報を入力してください
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* 決済設定選択 */}
+                  <div className="space-y-2">
+                    <Label htmlFor="userPaymentConfigId">決済設定 *</Label>
+                    <Select
+                      value={formData.userPaymentConfigId}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, userPaymentConfigId: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="決済設定を選択してください" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentConfigs.map((config) => (
+                          <SelectItem key={config.id} value={config.id}>
+                            <div className="flex items-center gap-2">
+                              <span>{config.displayName}</span>
+                              <Badge variant={config.isTestMode ? "secondary" : "default"}>
+                                {config.provider.toUpperCase()}
+                              </Badge>
+                              <Badge variant="outline">
+                                {config.isTestMode ? 'テスト' : '本番'}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 金額 */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="amount">金額 *</Label>
+                      <div className="relative">
+                        <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="amount"
+                          type="number"
+                          value={formData.amount}
+                          onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                          min="1"
+                          step="1"
+                          required
+                          className="pl-10"
+                          placeholder="1000"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="currency">通貨 *</Label>
+                      <Select
+                        value={formData.currency}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="jpy">JPY (日本円)</SelectItem>
+                          <SelectItem value="usd">USD (米ドル)</SelectItem>
+                          <SelectItem value="eur">EUR (ユーロ)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* 説明 */}
+                  <div className="space-y-2">
+                    <Label htmlFor="description">説明 (任意)</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      rows={3}
+                      placeholder="商品やサービスの説明を入力してください"
+                    />
+                  </div>
+
+                  {/* 有効期限 */}
+                  <div className="space-y-2">
+                    <Label htmlFor="expiresInHours">有効期限</Label>
+                    <Select
+                      value={formData.expiresInHours}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, expiresInHours: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            1時間
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="6">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            6時間
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="24">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            24時間
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="72">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            3日
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="168">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            1週間
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 送信ボタン */}
+                  <Button
+                    type="submit"
+                    disabled={loading || paymentConfigs.length === 0}
+                    className="w-full"
+                    size="lg"
                   >
-                    コピー
-                  </button>
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        作成中...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="mr-2 h-4 w-4" />
+                        決済リンクを作成
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* サイドバー */}
+          <div className="space-y-6">
+            {/* 成功メッセージ */}
+            {success && (
+              <Card className="border-green-200 bg-green-50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-green-800">
+                    <CheckCircle className="h-5 w-5" />
+                    作成完了！
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label className="text-green-700">決済リンク URL</Label>
+                    <div className="flex mt-1">
+                      <Input
+                        value={success.linkUrl}
+                        readOnly
+                        className="rounded-r-none border-green-300 bg-white"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-l-none border-green-300 hover:bg-green-100"
+                        onClick={() => copyToClipboard(success.linkUrl)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* QRコード表示 */}
+                  <div>
+                    <Label className="text-green-700">QRコード</Label>
+                    <div className="flex justify-center mt-2">
+                      <QRCodeDisplay
+                        url={success.linkUrl}
+                        autoGenerate={true}
+                        options={{
+                          size: 128,
+                          margin: 2,
+                          errorCorrectionLevel: 'M'
+                        }}
+                        alt="決済リンクQRコード"
+                        className="border border-green-300"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-green-700">金額:</span>
+                      <span>{success.amount.toLocaleString()} {success.currency.toUpperCase()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-green-700">有効期限:</span>
+                      <span>{success.expiresAt ? new Date(success.expiresAt).toLocaleString() : '無期限'}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button asChild variant="outline">
+                      <Link href={success.linkUrl} target="_blank">
+                        <Eye className="mr-2 h-4 w-4" />
+                        プレビュー
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                      <Link href="/dashboard">
+                        <FileText className="mr-2 h-4 w-4" />
+                        ダッシュボード
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* エラーメッセージ */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* 決済設定の確認 */}
+            {paymentConfigs.length === 0 && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  有効な決済設定がありません。
+                  <Link href="/settings/payments" className="underline ml-1">
+                    決済設定
+                  </Link>
+                  から設定を追加してください。
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* ヘルプカード */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  使い方ガイド
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="space-y-2">
+                  <h4 className="font-medium">決済リンクについて</h4>
+                  <p className="text-muted-foreground">
+                    作成された決済リンクを顧客に送信することで、簡単に決済を受け付けることができます。
+                  </p>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-green-700">金額:</span> {success.amount.toLocaleString()} {success.currency.toUpperCase()}
+                <div className="space-y-2">
+                  <h4 className="font-medium">有効期限</h4>
+                  <p className="text-muted-foreground">
+                    設定した有効期限を過ぎると、リンクは自動的に無効になります。
+                  </p>
                 </div>
-                <div>
-                  <span className="text-green-700">有効期限:</span>{' '}
-                  {success.expiresAt ? new Date(success.expiresAt).toLocaleString() : '無期限'}
+                <div className="space-y-2">
+                  <h4 className="font-medium">決済設定</h4>
+                  <p className="text-muted-foreground">
+                    事前に決済サービスの設定を完了している必要があります。
+                  </p>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
-        )}
-
-        {/* エラーメッセージ */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p className="text-red-800">{error}</p>
-          </div>
-        )}
-
-        {/* 決済設定の確認 */}
-        {paymentConfigs.length === 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-            <p className="text-yellow-800">
-              有効な決済設定がありません。
-              <a href="/settings/payments" className="underline ml-1">
-                決済設定
-              </a>
-              から設定を追加してください。
-            </p>
-          </div>
-        )}
-
-        {/* フォーム */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 決済設定選択 */}
-          <div>
-            <label htmlFor="userPaymentConfigId" className="block text-sm font-medium text-gray-700 mb-1">
-              決済設定 *
-            </label>
-            <select
-              id="userPaymentConfigId"
-              value={formData.userPaymentConfigId}
-              onChange={(e) => setFormData(prev => ({ ...prev, userPaymentConfigId: e.target.value }))}
-              required
-              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">決済設定を選択してください</option>
-              {paymentConfigs.map((config) => (
-                <option key={config.id} value={config.id}>
-                  {config.displayName} ({config.provider.toUpperCase()})
-                  {config.isTestMode ? ' [テストモード]' : ' [本番モード]'}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 金額 */}
-          <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
-              金額 *
-            </label>
-            <input
-              type="number"
-              id="amount"
-              value={formData.amount}
-              onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-              min="1"
-              step="1"
-              required
-              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="1000"
-            />
-          </div>
-
-          {/* 通貨 */}
-          <div>
-            <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
-              通貨 *
-            </label>
-            <select
-              id="currency"
-              value={formData.currency}
-              onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
-              required
-              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="jpy">JPY (日本円)</option>
-              <option value="usd">USD (米ドル)</option>
-              <option value="eur">EUR (ユーロ)</option>
-            </select>
-          </div>
-
-          {/* 説明 */}
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-              説明 (任意)
-            </label>
-            <textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              rows={3}
-              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="商品やサービスの説明を入力してください"
-            />
-          </div>
-
-          {/* 有効期限 */}
-          <div>
-            <label htmlFor="expiresInHours" className="block text-sm font-medium text-gray-700 mb-1">
-              有効期限
-            </label>
-            <select
-              id="expiresInHours"
-              value={formData.expiresInHours}
-              onChange={(e) => setFormData(prev => ({ ...prev, expiresInHours: e.target.value }))}
-              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="1">1時間</option>
-              <option value="6">6時間</option>
-              <option value="24">24時間</option>
-              <option value="72">3日</option>
-              <option value="168">1週間</option>
-            </select>
-          </div>
-
-          {/* 送信ボタン */}
-          <button
-            type="submit"
-            disabled={loading || paymentConfigs.length === 0}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? '作成中...' : '決済リンクを作成'}
-          </button>
-        </form>
-
-        {/* ダッシュボードへのリンク */}
-        <div className="mt-8 text-center">
-          <a
-            href="/dashboard"
-            className="text-blue-600 hover:text-blue-800 underline"
-          >
-            作成した決済リンク一覧を見る
-          </a>
         </div>
       </div>
     </div>

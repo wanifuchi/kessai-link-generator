@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { error as showError, success, info } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -144,7 +144,7 @@ export default function DashboardPage() {
     }
   };
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = useCallback(async () => {
     try {
       setIsStatsLoading(true);
       const response = await fetch(`/api/dashboard/stats?range=${dateRange}`);
@@ -160,7 +160,7 @@ export default function DashboardPage() {
     } finally {
       setIsStatsLoading(false);
     }
-  };
+  }, [dateRange]);
 
   useEffect(() => {
     fetchPaymentLinks(currentPage);
@@ -168,7 +168,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboardStats();
-  }, [dateRange]);
+  }, [fetchDashboardStats]);
 
   const refreshData = async () => {
     info('データ更新中', 'ダッシュボードデータを更新しています...');

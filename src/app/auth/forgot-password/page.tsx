@@ -59,23 +59,31 @@ function ForgotPasswordForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setInfo('')
     setIsLoading(true)
 
     try {
-      // TODO: パスワードリセット機能の実装
-      // 現在は機能を一時無効化
-      console.log('🔥 パスワードリセット（準備中）:', { email })
+      console.log('パスワードリセット要求:', { email })
 
-      // 一時的な模擬応答
-      setTimeout(() => {
-        setInfo('パスワードリセット機能は現在準備中です。しばらく後に再度お試しください。')
-        setIsLoading(false)
-      }, 1000)
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email })
+      })
 
-      return
+      const data = await response.json()
+
+      if (data.success) {
+        setInfo(data.message || 'パスワードリセットメールを送信しました。メールをご確認ください。')
+      } else {
+        setError(data.error || 'パスワードリセットの送信に失敗しました')
+      }
     } catch (err: any) {
-      console.error('🔥 パスワードリセット例外:', err)
-      setError(`エラーが発生しました: ${err.message || 'Unknown error'}`)
+      console.error('パスワードリセット例外:', err)
+      setError('ネットワークエラーが発生しました。しばらく後に再度お試しください。')
+    } finally {
       setIsLoading(false)
     }
   }

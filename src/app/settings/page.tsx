@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,11 +53,7 @@ export default function SettingsPage() {
     isActive: true,
   });
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       const response = await fetch('/api/settings');
       const data = await response.json();
@@ -81,7 +77,7 @@ export default function SettingsPage() {
     } finally {
       setInitialLoading(false);
     }
-  };
+  }, [toast]);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     // リアルタイム汚染チェック
@@ -246,7 +242,7 @@ export default function SettingsPage() {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     if (!confirm('この設定を削除してもよろしいですか？')) return;
 
     try {
@@ -274,7 +270,11 @@ export default function SettingsPage() {
         variant: 'destructive',
       });
     }
-  };
+  }, [toast, loadSettings]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const toggleSecretKeyVisibility = (settingId: string) => {
     setShowSecretKeys(prev => ({

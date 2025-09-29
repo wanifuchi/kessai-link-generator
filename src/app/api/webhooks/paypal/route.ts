@@ -159,7 +159,7 @@ async function handlePaymentCaptureCompleted(event: any) {
       await prisma.transaction.update({
         where: { id: transaction.id },
         data: {
-          status: 'succeeded',
+          status: 'completed',
           paidAt: new Date(),
           serviceTransactionId: captureId,
           customerEmail: event.resource.payer?.email_address,
@@ -178,6 +178,7 @@ async function handlePaymentCaptureCompleted(event: any) {
         where: { id: transaction.paymentLinkId },
         data: {
           status: 'succeeded',
+          completedAt: new Date(),
         },
       });
     }
@@ -292,7 +293,7 @@ async function handlePaymentCaptureRefunded(event: any) {
           currency: event.resource.amount.currency_code.toUpperCase(),
           service: PaymentService.paypal,
           serviceTransactionId: refundId,
-          status: 'succeeded',
+          status: 'completed',
           paidAt: new Date(),
           metadata: {
             refundId: refundId,

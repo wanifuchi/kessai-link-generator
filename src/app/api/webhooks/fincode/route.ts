@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFincodeService } from '@/lib/fincode';
 import prisma from '@/lib/prisma';
+import { PaymentService } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -102,31 +103,41 @@ async function handlePaymentCaptured(eventData: any) {
       return;
     }
 
+    // 既存のトランザクションをチェック
+    const existingTransaction = await prisma.transaction.findFirst({
+      where: {
+        serviceTransactionId: paymentId,
+        paymentLinkId: paymentLink.id,
+      }
+    });
+
+    if (!existingTransaction) {
+      // トランザクション記録を作成
+      await prisma.transaction.create({
+        data: {
+          paymentLinkId: paymentLink.id,
+          service: PaymentService.fincode,
+          serviceTransactionId: paymentId,
+          amount: amount || paymentLink.amount,
+          currency: currency || paymentLink.currency,
+          status: 'completed',
+          paidAt: new Date(),
+          metadata: {
+            eventType: 'payment.captured',
+            fincodePaymentId: paymentId,
+            originalEventData: eventData,
+          },
+        },
+      });
+    }
+
     // 決済完了状態に更新
     await prisma.paymentLink.update({
       where: { id: paymentLink.id },
       data: {
         status: 'succeeded',
         stripePaymentIntentId: paymentId,
-      },
-    });
-
-    // トランザクション記録を作成
-    await prisma.transaction.create({
-      data: {
-        id: `fincode_tx_${paymentId}`,
-        paymentLinkId: paymentLink.id,
-        service: PaymentService.fincode,
-        serviceTransactionId: paymentId,
-        amount: amount || paymentLink.amount,
-        currency: currency || paymentLink.currency,
-        status: 'completed',
-        paidAt: new Date(),
-        metadata: JSON.stringify({
-          eventType: 'payment.captured',
-          fincodePaymentId: paymentId,
-          originalEventData: eventData,
-        }),
+        completedAt: new Date(),
       },
     });
 

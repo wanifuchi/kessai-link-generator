@@ -24,6 +24,7 @@ model User {
   subscription       Subscription?
   accounts           Account[]           // NextAuth.js用
   sessions           Session[]           // NextAuth.js用
+  passwordResetTokens PasswordResetToken[] // パスワードリセットトークン
 
   @@map("users")
 }
@@ -67,6 +68,21 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique // ハッシュ化されたトークン
+  expiresAt DateTime // 有効期限
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model Subscription {

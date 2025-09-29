@@ -20,9 +20,9 @@ export default function SignUpPage() {
   // SSR時は何も表示しない
   if (!mounted) {
     return (
-      <main className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="flex items-center justify-center px-4 min-h-96">
         <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      </main>
+      </div>
     )
   }
 
@@ -51,9 +51,9 @@ function SignUpForm() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="flex items-center justify-center px-4 min-h-96">
         <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      </main>
+      </div>
     )
   }
 
@@ -141,7 +141,7 @@ function SignUpForm() {
   }
 
   return (
-    <main className="min-h-screen flex items-start justify-center pt-24 px-4 bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="flex items-start justify-center pt-24 px-4">
       <div className="w-full max-w-sm">
         <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-white/20 shadow-xl px-5 py-4">
           <div className="text-center mb-4">
@@ -274,6 +274,6 @@ function SignUpForm() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   )
 }

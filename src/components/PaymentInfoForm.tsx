@@ -52,6 +52,18 @@ export default function PaymentInfoForm() {
   const { setPaymentRequest } = usePaymentActions();
   const [previewAmount, setPreviewAmount] = useState<string>('');
 
+  if (!selectedService) return null;
+
+  const serviceInfo = getService(selectedService);
+  if (!serviceInfo) return null;
+
+  // サービスでサポートされている通貨を取得
+  const supportedCurrencies = serviceInfo.supportedCurrencies.map(code => ({
+    code,
+    name: code,
+    symbol: getCurrencySymbol(code)
+  }));
+
   const {
     register,
     handleSubmit,
@@ -66,18 +78,6 @@ export default function PaymentInfoForm() {
     },
     mode: 'onChange',
   });
-
-  if (!selectedService) return null;
-
-  const serviceInfo = getService(selectedService);
-  if (!serviceInfo) return null;
-
-  // サービスでサポートされている通貨を取得
-  const supportedCurrencies = serviceInfo.supportedCurrencies.map(code => ({
-    code,
-    name: code,
-    symbol: getCurrencySymbol(code)
-  }));
 
   const watchedAmount = watch('amount');
   const watchedCurrency = watch('currency');

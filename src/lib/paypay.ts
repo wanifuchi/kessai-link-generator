@@ -276,6 +276,73 @@ export class PayPayService {
       };
     }
   }
+
+  // 統一インターフェース用（PayPalやSquareと同じ）
+  async createPayment(config: {
+    amount: number;
+    currency: string;
+    orderId: string;
+    description?: string;
+    metadata?: any;
+  }): Promise<{ success: boolean; paymentUrl?: string; paymentId?: string; error?: string; qrCodeData?: string }> {
+    try {
+      // PayPayは日本円のみ対応
+      if (config.currency.toUpperCase() !== 'JPY') {
+        return {
+          success: false,
+          error: 'PayPayは日本円（JPY）のみ対応しています'
+        };
+      }
+
+      const result = await this.createQRCode({
+        amount: config.amount,
+        currency: 'JPY',
+        orderId: config.orderId,
+        description: config.description,
+        metadata: config.metadata
+      });
+
+      return {
+        success: result.success,
+        paymentUrl: result.paymentUrl,
+        paymentId: result.paymentId,
+        qrCodeData: result.qrCodeData,
+        error: result.error
+      };
+    } catch (error) {
+      console.error('PayPay createPayment error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // 設定の検証
+  static validateConfig(): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!process.env.PAYPAY_MERCHANT_ID) {
+      errors.push('PAYPAY_MERCHANT_ID is not set');
+    }
+
+    if (!process.env.PAYPAY_API_KEY) {
+      errors.push('PAYPAY_API_KEY is not set');
+    }
+
+    if (!process.env.PAYPAY_API_SECRET) {
+      errors.push('PAYPAY_API_SECRET is not set');
+    }
+
+    if (process.env.NODE_ENV === 'production' && !process.env.PAYPAY_WEBHOOK_SECRET) {
+      errors.push('PAYPAY_WEBHOOK_SECRET should be set in production');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  }
 }
 
 // シングルトンインスタンス

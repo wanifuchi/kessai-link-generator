@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -28,9 +28,9 @@ function PaymentFailedContent() {
     } else {
       setLoading(false);
     }
-  }, [paymentLinkId]);
+  }, [paymentLinkId, fetchPaymentDetails]);
 
-  const fetchPaymentDetails = async () => {
+  const fetchPaymentDetails = useCallback(async () => {
     try {
       const response = await fetch(`/api/payment-links/${paymentLinkId}`);
       const data = await response.json();
@@ -49,7 +49,7 @@ function PaymentFailedContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [paymentLinkId]);
 
   const formatAmount = (amount: number, currency: string) => {
     return new Intl.NumberFormat('ja-JP', {

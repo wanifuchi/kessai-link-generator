@@ -25,7 +25,6 @@
 
 ### 🔧 技術スタック
 - **フロントエンド**: Next.js 14, TypeScript, Tailwind CSS, shadcn/ui
-- **状態管理**: Zustand
 - **フォーム**: React Hook Form + Zod
 - **暗号化**: CryptoJS (AES-256)
 - **QRコード**: qrcode.js

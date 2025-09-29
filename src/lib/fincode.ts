@@ -342,6 +342,75 @@ export class FincodeService {
       return false;
     }
   }
+
+  // 統一インターフェース用（PayPal、Square、PayPayと同じ）
+  async createPaymentLink(config: {
+    amount: number;
+    currency: string;
+    orderId: string;
+    description?: string;
+    metadata?: any;
+  }): Promise<{ success: boolean; paymentUrl?: string; paymentId?: string; error?: string }> {
+    try {
+      // Fincodeは日本円のみ対応
+      if (config.currency.toUpperCase() !== 'JPY') {
+        return {
+          success: false,
+          error: 'Fincodeは日本円（JPY）のみ対応しています'
+        };
+      }
+
+      const fincodeRequest: FincodePaymentRequest = {
+        amount: config.amount,
+        currency: 'JPY',
+        orderId: config.orderId,
+        description: config.description,
+        paymentMethod: 'card', // デフォルトはカード決済
+        metadata: config.metadata
+      };
+
+      const result = await this.createPayment(fincodeRequest);
+
+      return {
+        success: result.success,
+        paymentUrl: result.paymentUrl,
+        paymentId: result.paymentId,
+        error: result.error
+      };
+    } catch (error) {
+      console.error('Fincode createPaymentLink error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // 設定の検証
+  static validateConfig(): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!process.env.FINCODE_SHOP_ID) {
+      errors.push('FINCODE_SHOP_ID is not set');
+    }
+
+    if (!process.env.FINCODE_SECRET_KEY) {
+      errors.push('FINCODE_SECRET_KEY is not set');
+    }
+
+    if (!process.env.FINCODE_PUBLIC_KEY) {
+      errors.push('FINCODE_PUBLIC_KEY is not set');
+    }
+
+    if (process.env.NODE_ENV === 'production' && !process.env.FINCODE_WEBHOOK_SECRET) {
+      errors.push('FINCODE_WEBHOOK_SECRET should be set in production');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  }
 }
 
 // シングルトンインスタンス

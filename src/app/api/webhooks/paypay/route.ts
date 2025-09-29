@@ -91,32 +91,42 @@ async function handlePaymentCompleted(eventData: any) {
       return;
     }
 
+    // 既存のトランザクションをチェック
+    const existingTransaction = await prisma.transaction.findFirst({
+      where: {
+        serviceTransactionId: paymentId,
+        paymentLinkId: paymentLink.id,
+      }
+    });
+
+    if (!existingTransaction) {
+      // トランザクション記録を作成
+      await prisma.transaction.create({
+        data: {
+          paymentLinkId: paymentLink.id,
+          service: PaymentService.paypay,
+          serviceTransactionId: paymentId,
+          amount: amount || paymentLink.amount,
+          currency: currency || paymentLink.currency,
+          status: 'completed',
+          paidAt: new Date(),
+          metadata: {
+            eventType: 'payment.completed',
+            paypayPaymentId: paymentId,
+            merchantPaymentId: merchantPaymentId,
+            originalEventData: eventData,
+          },
+        },
+      });
+    }
+
     // 決済完了状態に更新
     await prisma.paymentLink.update({
       where: { id: paymentLink.id },
       data: {
         status: 'succeeded',
         stripePaymentIntentId: paymentId, // PayPay Payment IDで更新
-      },
-    });
-
-    // トランザクション記録を作成
-    await prisma.transaction.create({
-      data: {
-        id: `paypay_tx_${paymentId}`,
-        paymentLinkId: paymentLink.id,
-        service: PaymentService.paypay,
-        serviceTransactionId: paymentId,
-        amount: amount || paymentLink.amount,
-        currency: currency || paymentLink.currency,
-        status: 'completed',
-        paidAt: new Date(),
-        metadata: JSON.stringify({
-          eventType: 'payment.completed',
-          paypayPaymentId: paymentId,
-          merchantPaymentId: merchantPaymentId,
-          originalEventData: eventData,
-        }),
+        completedAt: new Date(),
       },
     });
 

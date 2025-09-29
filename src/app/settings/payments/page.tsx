@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { PaymentService } from '@prisma/client'
 import {
   PaymentConfigFormData,
@@ -300,9 +300,9 @@ function PaymentConfigForm({
     if (isEditing) {
       loadConfigData()
     }
-  }, [configId])
+  }, [configId, isEditing, loadConfigData])
 
-  const loadConfigData = async () => {
+  const loadConfigData = useCallback(async () => {
     if (!configId) return
 
     try {
@@ -314,7 +314,7 @@ function PaymentConfigForm({
     } catch (error) {
       console.error('設定データの読み込みエラー:', error)
     }
-  }
+  }, [configId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

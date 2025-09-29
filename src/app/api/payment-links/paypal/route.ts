@@ -16,7 +16,16 @@ import { PaymentService } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
-    // PayPal設定の確認
+    // TODO: 認証とユーザーPayPal設定確認を実装
+    // const session = await getServerSession(authOptions);
+    // if (!session?.user) {
+    //   return NextResponse.json(
+    //     createErrorResponse('認証が必要です', PaymentService.paypal),
+    //     { status: 401 }
+    //   );
+    // }
+
+    // PayPal設定の確認（一時的に環境変数ベース）
     if (!checkServiceConfiguration('paypal')) {
       return NextResponse.json(
         createErrorResponse('PayPalの設定が完了していません', PaymentService.paypal),

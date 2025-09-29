@@ -22,12 +22,15 @@ export default function ClientNavigation() {
       <>
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
-          <Link href="/" className="text-gray-700 hover:text-primary transition-colors">
-            ホーム
-          </Link>
-          <Link href="/dashboard" className="text-gray-700 hover:text-primary transition-colors">
-            履歴
-          </Link>
+        <Link href="/" className="text-gray-700 hover:text-primary transition-colors">
+          ホーム
+        </Link>
+        <Link href="/insights" className="text-gray-700 hover:text-primary transition-colors">
+          インサイト
+        </Link>
+        <Link href="/dashboard" className="text-gray-700 hover:text-primary transition-colors">
+          履歴
+        </Link>
           <Link href="/settings" className="text-gray-700 hover:text-primary transition-colors">
             API設定
           </Link>
@@ -58,6 +61,9 @@ export default function ClientNavigation() {
       <nav className="hidden md:flex items-center space-x-6">
         <Link href="/" className="text-gray-700 hover:text-primary transition-colors">
           ホーム
+        </Link>
+        <Link href="/insights" className="text-gray-700 hover:text-primary transition-colors">
+          インサイト
         </Link>
         {user && (
           <>
@@ -140,12 +146,19 @@ export default function ClientNavigation() {
             <nav className="space-y-4">
               <Link
                 href="/"
-                className="block text-gray-700 hover:text-primary transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                ホーム
-              </Link>
-              {user && (
+              className="block text-gray-700 hover:text-primary transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              ホーム
+            </Link>
+            <Link
+              href="/insights"
+              className="block text-gray-700 hover:text-primary transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              インサイト
+            </Link>
+            {user && (
                 <>
                   <Link
                     href="/dashboard"

@@ -10,24 +10,41 @@ import { signIn } from 'next-auth/react'
 export const dynamic = 'force-dynamic'
 
 export default function SignInPage() {
-  const [mounted, setMounted] = useState(false)
-
-  // クライアントサイドでのみ実行
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  // SSR時は何も表示しない
-  if (!mounted) {
-    return (
-      <main className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      </main>
-    )
-  }
-
-  return <SignInForm />
+  // デバッグのため、シンプルなテストコンポーネントを表示
+  return (
+    <div className="flex items-start justify-center pt-24 px-4">
+      <div className="w-full max-w-sm">
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-white/20 shadow-xl px-5 py-4">
+          <div className="text-center mb-4">
+            <h1 className="text-lg font-medium text-slate-800">
+              ログイン（デバッグ中）
+            </h1>
+            <p className="text-sm text-slate-600 mt-1">
+              認証フォームのテスト表示
+            </p>
+          </div>
+          <div className="space-y-3">
+            <input
+              type="email"
+              placeholder="メールアドレス"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg"
+            />
+            <input
+              type="password"
+              placeholder="パスワード"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg"
+            />
+            <button className="w-full py-2.5 px-4 bg-blue-600 text-white rounded-lg">
+              ログイン
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
+
+// 元のコンポーネントは一時的にコメントアウト
 
 function SignInForm() {
   const [email, setEmail] = useState('')
@@ -39,24 +56,25 @@ function SignInForm() {
   const { user, loading } = useAuth()
   const router = useRouter()
 
-  // 既にログイン済みの場合はダッシュボードへリダイレクト
-  useEffect(() => {
-    if (!loading && user) {
-      router.push('/dashboard')
-    }
-  }, [user, loading, router])
+  // 既にログイン済みの場合はダッシュボードへリダイレクト（デバッグのため一時的に無効化）
+  // useEffect(() => {
+  //   if (!loading && user) {
+  //     router.push('/dashboard')
+  //   }
+  // }, [user, loading, router])
 
-  if (loading) {
-    return (
-      <main className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      </main>
-    )
-  }
+  // デバッグのためloading状態を一時的にスキップ
+  // if (loading) {
+  //   return (
+  //     <div className="flex items-center justify-center px-4 min-h-96">
+  //       <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+  //     </div>
+  //   )
+  // }
 
-  if (user) {
-    return null // リダイレクト中
-  }
+  // if (user) {
+  //   return null // リダイレクト中
+  // }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -122,7 +140,7 @@ function SignInForm() {
   }
 
   return (
-    <main className="min-h-screen flex items-start justify-center pt-24 px-4 bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="flex items-start justify-center pt-24 px-4">
       <div className="w-full max-w-sm">
         <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-white/20 shadow-xl px-5 py-4">
           <div className="text-center mb-4">
@@ -229,6 +247,6 @@ function SignInForm() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   )
 }

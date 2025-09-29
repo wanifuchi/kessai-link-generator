@@ -25,11 +25,11 @@ export async function DELETE(request: NextRequest) {
       })
       console.log(`📦 削除された決済リンク数: ${deletedPaymentLinks.count}`)
 
-      // 2. API設定を削除
-      const deletedApiSettings = await tx.apiSettings.deleteMany({
+      // 2. 決済設定を削除
+      const deletedPaymentConfigs = await tx.userPaymentConfig.deleteMany({
         where: { userId: user.id }
       })
-      console.log(`⚙️ 削除されたAPI設定数: ${deletedApiSettings.count}`)
+      console.log(`⚙️ 削除された決済設定数: ${deletedPaymentConfigs.count}`)
 
       // 3. サブスクリプションを削除
       const deletedSubscription = await tx.subscription.deleteMany({

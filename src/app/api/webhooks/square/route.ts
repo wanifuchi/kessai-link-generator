@@ -121,23 +121,32 @@ async function handlePaymentEvent(eventType: string, eventData: any) {
 
     // トランザクション記録を作成（完了時のみ）
     if (newStatus === 'succeeded' && amount) {
-      await prisma.transaction.create({
-        data: {
-          id: `square_tx_${paymentId}`,
-          paymentLinkId: paymentLink.id,
-          service: PaymentService.square,
+      // 既存のトランザクションをチェック
+      const existingTransaction = await prisma.transaction.findFirst({
+        where: {
           serviceTransactionId: paymentId,
-          amount: amount / 100, // Squareは最小単位なので100で割る
-          currency: currency || paymentLink.currency,
-          status: 'completed',
-          paidAt: new Date(),
-          metadata: JSON.stringify({
-            eventType,
-            squarePaymentId: paymentId,
-            squareOrderId: orderId,
-          }),
-        },
+          paymentLinkId: paymentLink.id,
+        }
       });
+
+      if (!existingTransaction) {
+        await prisma.transaction.create({
+          data: {
+            paymentLinkId: paymentLink.id,
+            service: PaymentService.square,
+            serviceTransactionId: paymentId,
+            amount: amount, // Squareは既にセント単位で保存されている
+            currency: currency || paymentLink.currency,
+            status: 'completed',
+            paidAt: new Date(),
+            metadata: {
+              eventType,
+              squarePaymentId: paymentId,
+              squareOrderId: orderId,
+            },
+          },
+        });
+      }
     }
 
     console.log('Square決済ステータス更新完了:', {
