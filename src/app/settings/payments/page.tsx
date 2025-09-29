@@ -289,7 +289,7 @@ function PaymentConfigForm({
     provider: PaymentService.stripe,
     isTestMode: true,
     isActive: false,
-    config: {}
+    config: undefined
   })
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
