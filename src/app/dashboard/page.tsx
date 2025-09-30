@@ -133,6 +133,7 @@ export default function DashboardPage() {
     if (!authLoading && user) {
       fetchStats(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user, selectedPeriod]);
 
   // リフレッシュハンドラー
