@@ -145,9 +145,8 @@ export class SquarePaymentService extends BasePaymentService {
 
       return {
         success: true,
-        paymentUrl: data.checkout.checkout_page_url,
-        externalId: data.checkout.order_id,
-        rawResponse: data,
+        url: data.checkout.checkout_page_url,
+        linkId: data.checkout.order_id,
       };
     } catch (error) {
       return this.handleError(error, 'Square決済リンク生成');

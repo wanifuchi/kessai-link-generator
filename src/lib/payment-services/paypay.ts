@@ -128,9 +128,8 @@ export class PayPayPaymentService extends BasePaymentService {
 
       return {
         success: true,
-        paymentUrl: data.data.url,
-        externalId: data.data.paymentId,
-        rawResponse: data,
+        url: data.data.url,
+        linkId: data.data.paymentId,
       };
     } catch (error) {
       return this.handleError(error, 'PayPay決済リンク生成');

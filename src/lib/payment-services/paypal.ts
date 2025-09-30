@@ -136,9 +136,8 @@ export class PayPalPaymentService extends BasePaymentService {
 
       return {
         success: true,
-        paymentUrl: approveLink.href,
-        externalId: data.id,
-        rawResponse: data,
+        url: approveLink.href,
+        linkId: data.id,
       };
     } catch (error) {
       return this.handleError(error, 'PayPal決済リンク生成');

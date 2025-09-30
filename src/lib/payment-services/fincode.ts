@@ -114,9 +114,8 @@ export class FincodePaymentService extends BasePaymentService {
 
       return {
         success: true,
-        paymentUrl: data.payment_link_url,
-        externalId: data.id,
-        rawResponse: data,
+        url: data.payment_link_url,
+        linkId: data.id,
       };
     } catch (error) {
       return this.handleError(error, 'fincode決済リンク生成');

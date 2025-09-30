@@ -1,12 +1,12 @@
 import Stripe from 'stripe';
 import { BasePaymentService } from './base';
-import { PaymentCredentials, PaymentRequest, PaymentLinkResponse, StripeCredentials } from '@/types/payment';
+import { PaymentService, PaymentCredentials, PaymentRequest, PaymentLinkResponse, StripeCredentials, Environment } from '@/types/payment';
 
 export class StripePaymentService extends BasePaymentService {
   private stripe: Stripe | null = null;
 
-  constructor() {
-    super('stripe');
+  constructor(service: PaymentService = PaymentService.stripe, environment: Environment = 'test') {
+    super(service, environment);
   }
 
   private initializeStripe(credentials: StripeCredentials): void {

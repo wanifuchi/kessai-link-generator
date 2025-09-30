@@ -25,18 +25,20 @@ export interface PaymentIntentResult {
   paymentUrl: string;
 }
 
-function getPaymentServiceInstance(provider: PaymentService) {
+function getPaymentServiceInstance(provider: PaymentService, isTestMode: boolean = false) {
+  const environment = isTestMode ? 'test' : 'production';
+
   switch (provider) {
     case PaymentService.stripe:
-      return new StripePaymentService();
+      return new StripePaymentService(provider, environment);
     case PaymentService.paypal:
-      return new PayPalPaymentService();
+      return new PayPalPaymentService(provider, environment);
     case PaymentService.square:
-      return new SquarePaymentService();
+      return new SquarePaymentService(provider, environment);
     case PaymentService.paypay:
-      return new PayPayPaymentService();
+      return new PayPayPaymentService(provider, environment);
     case PaymentService.fincode:
-      return new FincodePaymentService();
+      return new FincodePaymentService(provider, environment);
     default:
       throw new Error(`Unsupported payment service: ${provider}`);
   }
@@ -76,8 +78,8 @@ export async function createPaymentIntent({
   }
 
   const credentials = parseEncryptedConfig(paymentConfig.encryptedConfig);
-  
-  const paymentService = getPaymentServiceInstance(paymentConfig.provider);
+
+  const paymentService = getPaymentServiceInstance(paymentConfig.provider, paymentConfig.isTestMode);
 
   const successUrl = `${process.env.NEXTAUTH_URL}/pay/${linkId}/success`;
   const cancelUrl = `${process.env.NEXTAUTH_URL}/pay/${linkId}/cancel`;
@@ -105,9 +107,9 @@ export async function createPaymentIntent({
     }
 
     return {
-      clientSecret: result.clientSecret,
-      paymentIntentId: result.externalId || linkId,
-      paymentUrl: result.paymentUrl || '',
+      clientSecret: undefined,
+      paymentIntentId: result.linkId || linkId,
+      paymentUrl: result.url || '',
     };
   } catch (error) {
     console.error('Payment creation error:', error);
