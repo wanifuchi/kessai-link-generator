@@ -185,14 +185,36 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url)
         const page = parseInt(searchParams.get('page') || '1')
         const limit = parseInt(searchParams.get('limit') || '10')
-        const status = searchParams.get('status')
+
+        // クエリパラメータの取得
+        const search = searchParams.get('search')
+        const statusParam = searchParams.get('status')
+        const serviceParam = searchParams.get('service')
 
         const skip = (page - 1) * limit
 
         const where: any = {}
 
-        if (status) {
-          where.status = status
+        // 検索条件
+        if (search) {
+          where.OR = [
+            { description: { contains: search, mode: 'insensitive' } },
+            { linkUrl: { contains: search, mode: 'insensitive' } },
+          ]
+        }
+
+        // ステータスフィルター
+        if (statusParam) {
+          const statuses = statusParam.split(',')
+          where.status = { in: statuses }
+        }
+
+        // サービスフィルター
+        if (serviceParam) {
+          const services = serviceParam.split(',')
+          where.userPaymentConfig = {
+            provider: { in: services }
+          }
         }
 
         // userIdフィルタリングは自動で適用される

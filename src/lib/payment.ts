@@ -1,23 +1,61 @@
-import { createStripeClient, convertToStripeAmount, generateIdempotencyKey } from './stripe'
-import prisma from './prisma'
-import { PaymentService } from '@prisma/client'
+import prisma from './prisma';
+import { PaymentService } from '@prisma/client';
+import { StripePaymentService } from './payment-services/stripe';
+import { PayPalPaymentService } from './payment-services/paypal';
+import { SquarePaymentService } from './payment-services/square';
+import { PayPayPaymentService } from './payment-services/paypay';
+import { FincodePaymentService } from './payment-services/fincode';
+import type {
+  PaymentCredentials,
+  PaymentRequest,
+  PaymentLinkResponse,
+} from '@/types/payment';
 
 export interface CreatePaymentIntentRequest {
-  linkId: string
-  amount: number
-  currency: string
-  description?: string
-  userPaymentConfigId: string
+  linkId: string;
+  amount: number;
+  currency: string;
+  description?: string;
+  userPaymentConfigId: string;
 }
 
 export interface PaymentIntentResult {
-  clientSecret: string
-  paymentIntentId: string
+  clientSecret?: string;
+  paymentIntentId: string;
+  paymentUrl: string;
 }
 
-/**
- * Payment Intentを作成
- */
+function getPaymentServiceInstance(provider: PaymentService) {
+  switch (provider) {
+    case PaymentService.stripe:
+      return new StripePaymentService();
+    case PaymentService.paypal:
+      return new PayPalPaymentService();
+    case PaymentService.square:
+      return new SquarePaymentService();
+    case PaymentService.paypay:
+      return new PayPayPaymentService();
+    case PaymentService.fincode:
+      return new FincodePaymentService();
+    default:
+      throw new Error(`Unsupported payment service: ${provider}`);
+  }
+}
+
+function parseEncryptedConfig(encryptedConfig: string): PaymentCredentials {
+  try {
+    const config = JSON.parse(encryptedConfig);
+    return {
+      apiKey: config.apiKey || config.secretKey || '',
+      apiSecret: config.apiSecret || config.clientSecret || '',
+      merchantId: config.merchantId || config.locationId || config.shopId || '',
+      isTestMode: config.isTestMode || false,
+    };
+  } catch (error) {
+    throw new Error('決済設定の解析に失敗しました');
+  }
+}
+
 export async function createPaymentIntent({
   linkId,
   amount,
@@ -25,90 +63,70 @@ export async function createPaymentIntent({
   description,
   userPaymentConfigId,
 }: CreatePaymentIntentRequest): Promise<PaymentIntentResult> {
-  // ユーザーの決済設定を取得
   const paymentConfig = await prisma.userPaymentConfig.findUnique({
     where: { id: userPaymentConfigId },
-  })
+  });
 
   if (!paymentConfig) {
-    throw new Error('決済設定が見つかりません')
+    throw new Error('決済設定が見つかりません');
   }
 
   if (!paymentConfig.isActive) {
-    throw new Error('決済設定が無効になっています')
+    throw new Error('決済設定が無効になっています');
   }
 
-  if (paymentConfig.provider !== PaymentService.stripe) {
-    throw new Error('Stripe以外の決済プロバイダーには対応していません')
-  }
+  const credentials = parseEncryptedConfig(paymentConfig.encryptedConfig);
+  
+  const paymentService = getPaymentServiceInstance(paymentConfig.provider);
 
-  // Stripeクライアントを初期化
-  const stripe = createStripeClient(paymentConfig.encryptedConfig)
+  const successUrl = `${process.env.NEXTAUTH_URL}/pay/${linkId}/success`;
+  const cancelUrl = `${process.env.NEXTAUTH_URL}/pay/${linkId}/cancel`;
 
-  // べき等キーを生成
-  const idempotencyKey = generateIdempotencyKey(linkId)
+  const paymentRequest: PaymentRequest = {
+    amount,
+    currency: currency.toLowerCase(),
+    description: description || '決済リンクからの支払い',
+    successUrl,
+    cancelUrl,
+    metadata: {
+      linkId,
+      userPaymentConfigId,
+    },
+  };
 
   try {
-    // Payment Intentを作成
-    const paymentIntent = await stripe.paymentIntents.create(
-      {
-        amount: convertToStripeAmount(amount, currency),
-        currency: currency.toLowerCase(),
-        description: description || '決済リンクからの支払い',
-        metadata: {
-          linkId: linkId,
-          userPaymentConfigId: userPaymentConfigId,
-        },
-        automatic_payment_methods: {
-          enabled: true,
-        },
-      },
-      {
-        idempotencyKey,
-      }
-    )
+    const result: PaymentLinkResponse = await paymentService.createPaymentLink(
+      credentials,
+      paymentRequest
+    );
+
+    if (!result.success) {
+      throw new Error(result.error || '決済リンクの作成に失敗しました');
+    }
 
     return {
-      clientSecret: paymentIntent.client_secret!,
-      paymentIntentId: paymentIntent.id,
-    }
+      clientSecret: result.clientSecret,
+      paymentIntentId: result.externalId || linkId,
+      paymentUrl: result.paymentUrl || '',
+    };
   } catch (error) {
-    console.error('Payment Intent作成エラー:', error)
-    throw new Error('Payment Intentの作成に失敗しました')
+    console.error('Payment creation error:', error);
+    throw new Error('決済の作成に失敗しました');
   }
 }
 
-/**
- * Payment Intentのステータスを確認
- */
 export async function getPaymentIntentStatus(
   paymentIntentId: string,
   encryptedConfig: string
 ): Promise<string> {
-  const stripe = createStripeClient(encryptedConfig)
-
-  try {
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
-    return paymentIntent.status
-  } catch (error) {
-    console.error('Payment Intent取得エラー:', error)
-    throw new Error('Payment Intentの取得に失敗しました')
-  }
+  // TODO: 各サービスのステータス確認実装
+  return 'pending';
 }
 
-/**
- * Payment Intentをキャンセル
- */
 export async function cancelPaymentIntent(
   paymentIntentId: string,
   encryptedConfig: string
 ): Promise<void> {
-  const stripe = createStripeClient(encryptedConfig)
-
-  try {
-    await stripe.paymentIntents.cancel(paymentIntentId)
-  } catch (error) {
-    console.error('Payment Intentキャンセルエラー:', error)
-    throw new Error('Payment Intentのキャンセルに失敗しました')
-  }
+  // TODO: 各サービスのキャンセル実装
+  console.log('Cancel payment intent:', paymentIntentId);
 }

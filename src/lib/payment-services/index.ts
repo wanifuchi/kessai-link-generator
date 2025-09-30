@@ -1,5 +1,13 @@
 import { PaymentServiceInfo } from '@/types/payment';
 
+// Payment Service Implementations
+export { StripePaymentService } from './stripe';
+export { PayPalPaymentService } from './paypal';
+export { SquarePaymentService } from './square';
+export { PayPayPaymentService } from './paypay';
+export { FincodePaymentService } from './fincode';
+export { BasePaymentService } from './base';
+
 export const PAYMENT_SERVICES: Record<string, PaymentServiceInfo> = {
   stripe: {
     id: 'stripe',
