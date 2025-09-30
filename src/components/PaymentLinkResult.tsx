@@ -40,11 +40,6 @@ export default function PaymentLinkResult() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
 
-  useEffect(() => {
-    if (selectedService && credentials && paymentRequest && !generatedLink?.success && !isLoading) {
-      generatePaymentLink();
-    }
-  }, [selectedService, credentials, paymentRequest, generatePaymentLink, generatedLink?.success, isLoading]);
 
   const generateQRCode = useCallback(async (url: string) => {
     if (!url) return;
@@ -110,6 +105,12 @@ export default function PaymentLinkResult() {
       setLoading(false);
     }
   }, [selectedService, credentials, paymentRequest, setLoading, setError, updateGeneratedLink, generateQRCode]);
+
+  useEffect(() => {
+    if (selectedService && credentials && paymentRequest && !generatedLink?.success && !isLoading) {
+      generatePaymentLink();
+    }
+  }, [selectedService, credentials, paymentRequest, generatePaymentLink, generatedLink?.success, isLoading]);
 
 
   const handleCopy = async (text: string, type: string) => {

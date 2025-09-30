@@ -84,7 +84,7 @@ export class StripePaymentService extends BasePaymentService {
 
       // Stripe Product を作成
       const product = await this.stripe!.products.create({
-        name: paymentData.productName,
+        name: paymentData.productName || 'Payment',
         description: paymentData.description || undefined,
         metadata: paymentData.metadata || {},
       });
@@ -107,7 +107,7 @@ export class StripePaymentService extends BasePaymentService {
         ],
         metadata: {
           ...paymentData.metadata,
-          productName: paymentData.productName,
+          productName: paymentData.productName || null,
           originalAmount: paymentData.amount.toString(),
           currency: paymentData.currency,
           createdBy: 'kessai-link-generator',
@@ -133,14 +133,15 @@ export class StripePaymentService extends BasePaymentService {
       // 有効期限の設定
       if (paymentData.expiresAt) {
         const expirationDate = new Date(paymentData.expiresAt);
-        if (this.validateExpiresAt(paymentData.expiresAt)) {
+        const expiresAtString = expirationDate.toISOString();
+        if (this.validateExpiresAt(expiresAtString)) {
           paymentLinkData.restrictions = {
             completed_sessions: {
               limit: 1,
             },
           };
           // Stripe Payment Linksは直接的な有効期限設定がないため、メタデータに記録
-          paymentLinkData.metadata!.expiresAt = paymentData.expiresAt;
+          paymentLinkData.metadata!.expiresAt = expiresAtString;
         }
       }
 

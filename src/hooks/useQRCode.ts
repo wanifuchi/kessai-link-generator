@@ -100,7 +100,7 @@ export function useQRCode(): UseQRCodeReturn {
     setIsGenerating(false)
   }, [])
 
-  const preloadLibrary = useCallback(async (req, session) => {
+  const preloadLibrary = useCallback(async () => {
     try {
       // QRCodeライブラリを事前にロード
       await import('qrcode')

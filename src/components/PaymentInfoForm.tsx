@@ -110,12 +110,12 @@ export default function PaymentInfoForm() {
   };
 
   const onSubmit = (data: PaymentInfoFormData) => {
-    // 空文字列をundefinedに変換
+    // 空文字列をundefinedに変換、expiresAtをDate型に変換
     const cleanedData = {
       ...data,
       description: data.description || undefined,
       customerEmail: data.customerEmail || undefined,
-      expiresAt: data.expiresAt || undefined,
+      expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
       successUrl: data.successUrl || undefined,
       cancelUrl: data.cancelUrl || undefined,
     };
@@ -150,7 +150,7 @@ export default function PaymentInfoForm() {
             <div className="text-right">
               <div className="text-sm text-gray-600">対応通貨</div>
               <div className="flex flex-wrap gap-1">
-                {serviceInfo.supportedCurrencies.slice(0, 4).map(currency => (
+                {serviceInfo.supportedCurrencies.slice(0, 4).map((currency: string) => (
                   <span key={currency} className="text-xs bg-blue-100 px-2 py-1 rounded">
                     {currency}
                   </span>
@@ -226,7 +226,7 @@ export default function PaymentInfoForm() {
                     <SelectValue placeholder="通貨を選択" />
                   </SelectTrigger>
                   <SelectContent>
-                    {supportedCurrencies.map((currency) => (
+                    {supportedCurrencies.map((currency: {code: string; name: string; symbol: string}) => (
                       <SelectItem key={currency.code} value={currency.code}>
                         <div className="flex items-center space-x-2">
                           <span>{currency.symbol}</span>

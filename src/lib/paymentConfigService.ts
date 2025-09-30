@@ -22,7 +22,7 @@ export class PaymentConfigService {
     userId: string,
     formData: PaymentConfigFormData
   ): Promise<EncryptedPaymentConfig> {
-    return await withUserId(userId, async (req, session) => {
+    return await withUserId(userId, async () => {
       // 入力値検証
       const validation = this.validateConfig(formData.provider, formData.config)
       if (!validation.isValid) {
@@ -50,6 +50,7 @@ export class PaymentConfigService {
       // データベースに保存（userIdは自動で設定される）
       const saved = await prisma.userPaymentConfig.create({
         data: {
+          userId,
           provider: formData.provider,
           displayName: formData.displayName,
           encryptedConfig,
@@ -70,7 +71,7 @@ export class PaymentConfigService {
     userId: string,
     formData: Partial<PaymentConfigFormData>
   ): Promise<EncryptedPaymentConfig> {
-    return await withUserId(userId, async (req, session) => {
+    return await withUserId(userId, async () => {
       // 設定の存在確認（userIdフィルタリングは自動適用される）
       const existing = await prisma.userPaymentConfig.findFirst({
         where: { id: configId }
@@ -114,7 +115,7 @@ export class PaymentConfigService {
    * 決済設定を取得（復号化済み）
    */
   static async getConfig(configId: string, userId: string): Promise<PaymentConfigFormData | null> {
-    return await withUserId(userId, async (req, session) => {
+    return await withUserId(userId, async () => {
       // userIdフィルタリングは自動適用される
       const config = await prisma.userPaymentConfig.findFirst({
         where: { id: configId }
@@ -144,7 +145,7 @@ export class PaymentConfigService {
    * ユーザーの全決済設定を取得（設定データは除外）
    */
   static async getUserConfigs(userId: string): Promise<EncryptedPaymentConfig[]> {
-    return await withUserId(userId, async (req, session) => {
+    return await withUserId(userId, async () => {
       // userIdフィルタリングは自動適用される
       const configs = await prisma.userPaymentConfig.findMany({
         orderBy: { createdAt: 'desc' }
@@ -158,7 +159,7 @@ export class PaymentConfigService {
    * 決済設定を削除
    */
   static async deleteConfig(configId: string, userId: string): Promise<void> {
-    return await withUserId(userId, async (req, session) => {
+    return await withUserId(userId, async () => {
       // userIdフィルタリングが自動適用される
       const deleted = await prisma.userPaymentConfig.deleteMany({
         where: { id: configId }
@@ -282,7 +283,7 @@ export class PaymentConfigService {
     userId: string,
     result: ConnectionTestResult
   ): Promise<void> {
-    return await withUserId(userId, async (req, session) => {
+    return await withUserId(userId, async () => {
       // userIdフィルタリングが自動適用される
       await prisma.userPaymentConfig.updateMany({
         where: { id: configId },

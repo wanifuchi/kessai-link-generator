@@ -14,7 +14,7 @@ const nextConfig = {
 
   experimental: {
     // Next.js 最適化機能
-    optimizeCss: true,
+    // optimizeCss: true, // 一時的に無効化（crittersエラー対応）
     optimizePackageImports: ['lucide-react', '@radix-ui/react-toast'],
     serverComponentsExternalPackages: [], // Vercel向けサーバーコンポーネント最適化
   },

@@ -130,7 +130,7 @@ export function isServiceAvailable(serviceId: PaymentService): boolean {
 
 // 利用可能なサービスのみ取得
 export function getAvailableServices(): PaymentServiceInfo[] {
-  return getAllServices().filter(service => isServiceAvailable(service.id));
+  return getAllServices().filter(service => isServiceAvailable(service.id as PaymentService));
 }
 
 // 通貨をサポートするサービス取得

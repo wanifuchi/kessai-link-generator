@@ -49,7 +49,7 @@ export default function PaymentServiceSelector() {
         {services.map((service) => {
           const isSelected = selectedServiceId === service.id;
           const useCases = Object.entries(SERVICE_USE_CASES)
-            .filter(([_, serviceIds]) => serviceIds.includes(service.id))
+            .filter(([_, serviceIds]) => serviceIds.includes(service.id as PaymentService))
             .map(([useCase, _]) => useCase);
 
           return (
@@ -58,7 +58,7 @@ export default function PaymentServiceSelector() {
               className={`payment-service-card cursor-pointer transition-all duration-200 ${
                 isSelected ? 'selected' : ''
               }`}
-              onClick={() => handleServiceSelect(service.id)}
+              onClick={() => handleServiceSelect(service.id as PaymentService)}
             >
               <CardContent className="p-6">
                 {/* Header */}
@@ -129,7 +129,7 @@ export default function PaymentServiceSelector() {
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleDetails(service.id);
+                    toggleDetails(service.id as PaymentService);
                   }}
                   className="w-full justify-center text-xs"
                 >

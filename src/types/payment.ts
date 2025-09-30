@@ -1,5 +1,21 @@
 import { PaymentService } from '@prisma/client'
 
+// Re-export PaymentService for use in other components
+export { PaymentService }
+
+// 決済サービス情報
+export interface PaymentServiceInfo {
+  id: string
+  name: string
+  displayName: string
+  description: string
+  logo: string
+  feeRate: string
+  supportedCurrencies: string[]
+  supportedCountries: string[]
+  features: string[]
+}
+
 // 決済リンクの状態
 export enum PaymentStatus {
   PENDING = 'pending',
@@ -143,4 +159,63 @@ export interface PaymentNotification {
 // 決済サービス認証情報（汎用型）
 export interface PaymentCredentials {
   [key: string]: any
+}
+
+// Stripe認証情報
+export interface StripeCredentials {
+  secretKey: string
+  publishableKey: string
+  webhookSecret: string
+  environment: 'test' | 'live'
+}
+
+// 決済リクエスト
+export interface PaymentRequest {
+  amount: number
+  currency: string
+  productName?: string
+  description?: string
+  expiresAt?: Date
+  customerEmail?: string
+  successUrl?: string
+  cancelUrl?: string
+  metadata?: Record<string, any>
+  quantity?: number
+}
+
+// 決済リンクレスポンス
+export interface PaymentLinkResponse {
+  success: boolean
+  data?: CreatePaymentLinkResponse
+  url?: string
+  linkId?: string
+  expiresAt?: Date
+  error?: string
+  errorDetails?: {
+    service: string
+    context?: string
+    originalError?: any
+    timestamp?: string
+  }
+}
+
+// 環境設定
+export type Environment = 'test' | 'production'
+
+// Payment Store型
+export interface PaymentStore {
+  selectedService: PaymentService | null
+  credentials: PaymentCredentials | null
+  paymentRequest: PaymentRequest | null
+  generatedLink: PaymentLinkResponse | null
+  isLoading: boolean
+  error: string | null
+
+  setSelectedService: (service: PaymentService) => void
+  setCredentials: (credentials: PaymentCredentials) => void
+  setPaymentRequest: (paymentRequest: PaymentRequest) => void
+  setGeneratedLink: (generatedLink: PaymentLinkResponse) => void
+  setLoading: (isLoading: boolean) => void
+  setError: (error: string | null) => void
+  reset: () => void
 }

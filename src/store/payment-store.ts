@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+// import { persist } from 'zustand/middleware';
 import { PaymentStore, PaymentService, PaymentCredentials, PaymentRequest, PaymentLinkResponse } from '@/types/payment';
 
 // セキュリティ上の理由で、認証情報は持続化しない
@@ -14,9 +14,7 @@ const initialState = {
   error: null,
 };
 
-export const usePaymentStore = create<PaymentStore>()(
-  persist(
-    (set, get) => ({
+export const usePaymentStore = create<PaymentStore>((set, get) => ({
       ...initialState,
 
       setSelectedService: (service: PaymentService) => {
@@ -70,36 +68,7 @@ export const usePaymentStore = create<PaymentStore>()(
       reset: () => {
         set(initialState);
       },
-    }),
-    {
-      name: 'payment-generator-storage',
-      storage: createJSONStorage(() => {
-        if (typeof window === 'undefined') {
-          // SSR環境では何もしない
-          return {
-            getItem: () => null,
-            setItem: () => {},
-            removeItem: () => {},
-          };
-        }
-        return sessionStorage;
-      }),
-      // 認証情報など機密データは持続化しない
-      partialize: (state) => ({
-        selectedService: state.selectedService,
-        paymentRequest: state.paymentRequest,
-        // credentials と generatedLink は含めない（セキュリティ上の理由）
-      }),
-      version: 1,
-      migrate: (persistedState: any, version: number) => {
-        // バージョン管理とマイグレーション
-        if (version < 1) {
-          return initialState;
-        }
-        return persistedState;
-      },
-    }
-  )
+    })
 );
 
 // セレクター関数（パフォーマンス最適化用）

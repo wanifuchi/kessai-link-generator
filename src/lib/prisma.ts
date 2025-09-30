@@ -72,7 +72,7 @@ function createPrismaClient() {
       }
 
       // Transactionモデルの場合はPaymentLink経由でuserIdをフィルタ
-      else if (params.model === 'transaction') {
+      else if (params.model === 'Transaction') {
         if (params.action.startsWith('find') || params.action === 'count' || params.action === 'aggregate') {
           if (!params.args) {
             params.args = {}

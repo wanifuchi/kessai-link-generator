@@ -33,21 +33,21 @@ export function mapToPaymentStatus(serviceStatus: string, service: PaymentServic
     case 'captured':
     case 'approved':
     case 'success':
-      return 'completed';
+      return PaymentStatus.succeeded;
     case 'canceled':
     case 'cancelled':
-      return 'cancelled';
+      return PaymentStatus.cancelled;
     case 'failed':
     case 'error':
     case 'declined':
-      return 'failed';
+      return PaymentStatus.failed;
     case 'expired':
-      return 'expired';
+      return PaymentStatus.expired;
     case 'pending':
     case 'processing':
     case 'authorized':
     default:
-      return 'pending';
+      return PaymentStatus.pending;
   }
 }
 
@@ -62,22 +62,22 @@ export function mapToTransactionStatus(serviceStatus: string, service: PaymentSe
     case 'captured':
     case 'approved':
     case 'success':
-      return 'completed';
+      return TransactionStatus.completed;
     case 'canceled':
     case 'cancelled':
-      return 'cancelled';
+      return TransactionStatus.cancelled;
     case 'failed':
     case 'error':
     case 'declined':
-      return 'failed';
+      return TransactionStatus.failed;
     case 'refunded':
     case 'refund':
-      return 'refunded';
+      return TransactionStatus.refunded;
     case 'pending':
     case 'processing':
     case 'authorized':
     default:
-      return 'pending';
+      return TransactionStatus.pending;
   }
 }
 
