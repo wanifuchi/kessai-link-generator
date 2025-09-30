@@ -166,7 +166,7 @@ export function getColumns(): ColumnDef<PaymentLinkWithDetails>[] {
     // アクション列
     {
       id: 'actions',
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
         const link = row.original;
         const meta = table.options.meta as any;
 
