@@ -65,7 +65,8 @@ export async function createPaymentIntent({
   description,
   userPaymentConfigId,
 }: CreatePaymentIntentRequest): Promise<PaymentIntentResult> {
-  const paymentConfig = await prisma.userPaymentConfig.findUnique({
+  // findFirstを使用してPrismaミドルウェアのuserIdフィルタと互換性を保つ
+  const paymentConfig = await prisma.userPaymentConfig.findFirst({
     where: { id: userPaymentConfigId },
   });
 
