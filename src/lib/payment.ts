@@ -5,6 +5,7 @@ import { PayPalPaymentService } from './payment-services/paypal';
 import { SquarePaymentService } from './payment-services/square';
 import { PayPayPaymentService } from './payment-services/paypay';
 import { FincodePaymentService } from './payment-services/fincode';
+import { decryptData } from './encryption';
 import type {
   PaymentCredentials,
   PaymentRequest,
@@ -50,11 +51,12 @@ function parseEncryptedConfig(
   isTestMode: boolean
 ): PaymentCredentials {
   try {
-    const config = JSON.parse(encryptedConfig);
+    // まず復号化
+    const decrypted = decryptData(encryptedConfig);
 
     // Stripe固有の形式
     if (provider === PaymentService.stripe) {
-      const stripeConfig = config.stripe || config;
+      const stripeConfig = decrypted.stripe || decrypted;
       return {
         publishableKey: stripeConfig.publishableKey || '',
         secretKey: stripeConfig.secretKey || '',
@@ -64,7 +66,7 @@ function parseEncryptedConfig(
     }
 
     // 他のサービス用の汎用形式
-    const serviceConfig = config[provider] || config;
+    const serviceConfig = decrypted[provider] || decrypted;
     return {
       apiKey: serviceConfig.apiKey || serviceConfig.secretKey || '',
       apiSecret: serviceConfig.apiSecret || serviceConfig.clientSecret || '',
@@ -72,6 +74,7 @@ function parseEncryptedConfig(
       isTestMode: isTestMode,
     };
   } catch (error) {
+    console.error('Config parsing error:', error);
     throw new Error('決済設定の解析に失敗しました');
   }
 }
