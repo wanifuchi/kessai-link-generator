@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authOptions } from '@/lib/authOptions';
 import prisma, { withSession } from '@/lib/prisma';
 import { BulkActionRequest } from '@/types/link';
 
@@ -6,6 +7,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     return await withSession(
       request,
+      authOptions,
       async (req, session) => {
         if (!session?.user?.id) {
           return NextResponse.json(

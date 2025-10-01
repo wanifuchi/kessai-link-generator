@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
 
     return await withSession(
       request,
+      authOptions,
       async (req, session) => {
         const { searchParams } = new URL(request.url);
         const service = searchParams.get('service');
@@ -126,6 +127,7 @@ export async function POST(request: NextRequest) {
 
     return await withSession(
       request,
+      authOptions,
       async (req, session) => {
         body = await request.json();
         console.log('API設定作成リクエスト:', body);

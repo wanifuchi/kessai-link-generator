@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authOptions } from '@/lib/authOptions';
 import { getFincodeService } from '@/lib/fincode';
 import prisma, { withSession } from '@/lib/prisma';
 import {
@@ -12,7 +13,7 @@ import {
 import { PaymentService } from '@prisma/client';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  return withSession(request, async (req, session) => {
+  return withSession(request, authOptions, async (req, session) => {
     if (!session?.user?.id) {
       return NextResponse.json(
         createErrorResponse('認証が必要です', PaymentService.fincode),

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authOptions } from '@/lib/authOptions';
 import prisma, { withSession } from '@/lib/prisma';
 
 // Dynamic server usage for authentication
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     return await withSession(
       request,
+      authOptions,
       async (req, session) => {
         const { searchParams } = new URL(request.url);
         const dateRange = searchParams.get('range') || '30'; // デフォルト30日

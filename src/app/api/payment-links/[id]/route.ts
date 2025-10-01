@@ -145,6 +145,7 @@ export async function PATCH(
   try {
     return await withSession(
       request,
+      authOptions,
       async (req, session) => {
         const { id } = params
 
@@ -246,6 +247,7 @@ export async function DELETE(
   try {
     return await withSession(
       request,
+      authOptions,
       async (req, session) => {
         const { id } = params
 

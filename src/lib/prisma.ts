@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client'
 import { AsyncLocalStorage } from 'async_hooks'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/authOptions'
+import type { NextAuthOptions } from 'next-auth'
 
 declare global {
   var prisma: PrismaClient | undefined
@@ -114,10 +114,11 @@ export function withUserId<T>(userId: string, fn: () => Promise<T>): Promise<T> 
 // APIルート用のwithSession関数
 export async function withSession<T>(
   request: NextRequest,
+  authOpts: NextAuthOptions,  // authOptionsを引数として受け取る
   fn: (req: NextRequest, session: any) => Promise<T>
 ): Promise<T> {
   // NextAuthセッションを取得（authOptionsを渡す）
-  const session = await getServerSession(authOptions)
+  const session = await getServerSession(authOpts)
 
   // セッション情報をコールバックに渡す
   if (session?.user?.id) {

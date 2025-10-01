@@ -25,6 +25,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     return await withSession(
       request,
+      authOptions,
       async (req, session) => {
         // 認証チェック
         if (!session?.user?.id) {
@@ -181,6 +182,7 @@ export async function GET(request: NextRequest) {
   try {
     return await withSession(
       request,
+      authOptions,
       async (req, session) => {
         const { searchParams } = new URL(request.url)
         const page = parseInt(searchParams.get('page') || '1')

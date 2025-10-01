@@ -19,6 +19,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     return await withSession(
       request,
+      authOptions,
       async (req, session) => {
         const body = await request.json();
         console.log('Stripe決済リンク作成リクエスト:', body);
@@ -152,6 +153,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     return await withSession(
       request,
+      authOptions,
       async (req, session) => {
         const { searchParams } = new URL(request.url);
         const page = parseInt(searchParams.get('page') || '1');

@@ -26,6 +26,7 @@ export async function GET(
   try {
     return await withSession(
       request,
+      authOptions,
       async (req, session) => {
         const setting = await prisma.apiSettings.findUnique({
           where: { id: params.id },
@@ -77,6 +78,7 @@ export async function PUT(
   try {
     return await withSession(
       request,
+      authOptions,
       async (req, session) => {
         const body = await request.json();
         console.log('API設定更新リクエスト:', { id: params.id, ...body });
@@ -161,6 +163,7 @@ export async function DELETE(
   try {
     return await withSession(
       request,
+      authOptions,
       async (req, session) => {
         // 設定の存在確認（userIdフィルタリングは自動適用される）
         const existingSetting = await prisma.apiSettings.findUnique({
