@@ -111,7 +111,7 @@ export default function CreatePaymentLinkPage() {
       const expiresAt = new Date(Date.now() + parseInt(formData.expiresInHours) * 60 * 60 * 1000)
 
       const requestData: CreatePaymentLinkRequest = {
-        amount: parseFloat(formData.amount),
+        amount: parseFloat(formData.amount.replace(/,/g, '')) || 0,
         currency: formData.currency,
         description: formData.description || undefined,
         expiresAt: expiresAt,
@@ -230,14 +230,20 @@ export default function CreatePaymentLinkPage() {
                         <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="amount"
-                          type="number"
+                          type="text"
                           value={formData.amount}
-                          onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-                          min="1"
-                          step="1"
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/,/g, ''); // カンマを除去
+                            if (value === '' || /^\d+$/.test(value)) { // 数字のみ許可
+                              setFormData(prev => ({
+                                ...prev,
+                                amount: value ? parseInt(value).toLocaleString() : '' // 3桁区切りで表示
+                              }));
+                            }
+                          }}
                           required
                           className="pl-10"
-                          placeholder="1000"
+                          placeholder="1,000"
                         />
                       </div>
                     </div>
