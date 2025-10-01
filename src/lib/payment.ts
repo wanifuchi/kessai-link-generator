@@ -44,9 +44,24 @@ function getPaymentServiceInstance(provider: PaymentService, isTestMode: boolean
   }
 }
 
-function parseEncryptedConfig(encryptedConfig: string): PaymentCredentials {
+function parseEncryptedConfig(
+  encryptedConfig: string,
+  provider: PaymentService
+): PaymentCredentials {
   try {
     const config = JSON.parse(encryptedConfig);
+
+    // Stripe固有の形式
+    if (provider === PaymentService.stripe) {
+      return {
+        publishableKey: config.publishableKey || '',
+        secretKey: config.secretKey || '',
+        webhookSecret: config.webhookSecret || '',
+        environment: config.environment || (config.isTestMode ? 'test' : 'live')
+      };
+    }
+
+    // 他のサービス用の汎用形式
     return {
       apiKey: config.apiKey || config.secretKey || '',
       apiSecret: config.apiSecret || config.clientSecret || '',
@@ -78,7 +93,10 @@ export async function createPaymentIntent({
     throw new Error('決済設定が無効になっています');
   }
 
-  const credentials = parseEncryptedConfig(paymentConfig.encryptedConfig);
+  const credentials = parseEncryptedConfig(
+    paymentConfig.encryptedConfig,
+    paymentConfig.provider
+  );
 
   const paymentService = getPaymentServiceInstance(paymentConfig.provider, paymentConfig.isTestMode);
 
