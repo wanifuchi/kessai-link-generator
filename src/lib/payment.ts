@@ -46,27 +46,30 @@ function getPaymentServiceInstance(provider: PaymentService, isTestMode: boolean
 
 function parseEncryptedConfig(
   encryptedConfig: string,
-  provider: PaymentService
+  provider: PaymentService,
+  isTestMode: boolean
 ): PaymentCredentials {
   try {
     const config = JSON.parse(encryptedConfig);
 
     // Stripe固有の形式
     if (provider === PaymentService.stripe) {
+      const stripeConfig = config.stripe || config;
       return {
-        publishableKey: config.publishableKey || '',
-        secretKey: config.secretKey || '',
-        webhookSecret: config.webhookSecret || '',
-        environment: config.environment || (config.isTestMode ? 'test' : 'live')
+        publishableKey: stripeConfig.publishableKey || '',
+        secretKey: stripeConfig.secretKey || '',
+        webhookSecret: stripeConfig.webhookSecret || '',
+        environment: isTestMode ? 'test' : 'live'
       };
     }
 
     // 他のサービス用の汎用形式
+    const serviceConfig = config[provider] || config;
     return {
-      apiKey: config.apiKey || config.secretKey || '',
-      apiSecret: config.apiSecret || config.clientSecret || '',
-      merchantId: config.merchantId || config.locationId || config.shopId || '',
-      isTestMode: config.isTestMode || false,
+      apiKey: serviceConfig.apiKey || serviceConfig.secretKey || '',
+      apiSecret: serviceConfig.apiSecret || serviceConfig.clientSecret || '',
+      merchantId: serviceConfig.merchantId || serviceConfig.locationId || serviceConfig.shopId || '',
+      isTestMode: isTestMode,
     };
   } catch (error) {
     throw new Error('決済設定の解析に失敗しました');
@@ -95,7 +98,8 @@ export async function createPaymentIntent({
 
   const credentials = parseEncryptedConfig(
     paymentConfig.encryptedConfig,
-    paymentConfig.provider
+    paymentConfig.provider,
+    paymentConfig.isTestMode
   );
 
   const paymentService = getPaymentServiceInstance(paymentConfig.provider, paymentConfig.isTestMode);
