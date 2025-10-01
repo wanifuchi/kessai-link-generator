@@ -88,6 +88,16 @@ export default function CreatePaymentLinkPage() {
 
     if (session) {
       fetchPaymentConfigs()
+
+      // ページフォーカス時に再取得（別タブで設定変更した場合に対応）
+      const handleFocus = () => {
+        fetchPaymentConfigs()
+      }
+      window.addEventListener('focus', handleFocus)
+
+      return () => {
+        window.removeEventListener('focus', handleFocus)
+      }
     }
   }, [session])
 

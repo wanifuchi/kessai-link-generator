@@ -92,7 +92,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: assets.stripe.com *.paypalobjects.com *.squareup.com; font-src 'self' fonts.gstatic.com; connect-src 'self' api.stripe.com *.paypal.com *.squareup.com;"
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' js.stripe.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com; img-src 'self' data: assets.stripe.com *.paypalobjects.com *.squareup.com; font-src 'self' fonts.gstatic.com; connect-src 'self' api.stripe.com *.paypal.com *.squareup.com;"
           }
         ]
       }
