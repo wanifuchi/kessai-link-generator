@@ -88,6 +88,7 @@ export async function createPaymentIntent({
   const paymentRequest: PaymentRequest = {
     amount,
     currency: currency.toLowerCase(),
+    productName: description || '決済リンクからの支払い',
     description: description || '決済リンクからの支払い',
     successUrl,
     cancelUrl,
